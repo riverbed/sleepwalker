@@ -8,6 +8,7 @@
 import uritemplate
 import copy
 import logging
+from functools import partial
 
 logger = logging.getLogger(__name__)
 
@@ -63,11 +64,20 @@ class Resource(object):
         if key in self.__dict__:
             return self.__dict__[key]
 
-        if key in self.schema.jsonschema.links:
-            link = self.schema.jsonschema.links[key]
-            return lambda *args, **kwargs: self._follow(link, *args, **kwargs)
-
         raise AttributeError("No such attribute '%s'" % key)
+
+    @property
+    def links(self):
+        class Links(object):
+            def __init__(self, resource, links):
+                self.resource = resource
+                self.links = links
+            def __getattr__(self, key):
+                if key in self.links:
+                    return partial(self.resource._follow, self.links[key])
+            def __repr__(self):
+                return self.links
+        return Links(self, self.schema.jsonschema.links)
 
     def _follow(self, link, *args, **kwargs):
         if link.path is not None:

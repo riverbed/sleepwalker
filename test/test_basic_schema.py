@@ -5,11 +5,19 @@
 #   https://github.com/riverbed/flyscript-portal/blob/master/LICENSE ("License").
 # This software is distributed "AS IS" as set forth in the License.
 
-import unittest, re, logging, uritemplate
+import os
+import re
+import logging
+import unittest
+
+import uritemplate
 from reschema.jsonschema import Ref
 
 from sleepwalker.service import Service
 from sleepwalker.resource import Resource, Schema
+
+
+TEST_PATH = os.path.abspath(os.path.dirname(__file__))
 
 class NoSchemaFound(Exception): pass
 
@@ -65,7 +73,7 @@ class BasicTest(unittest.TestCase):
 
     def setUp(self):
         self.service = Service()
-        self.service.load_restschema("basic_schema.yml")
+        self.service.load_restschema(os.path.join(TEST_PATH, "basic_schema.yml"))
         self.service.conn = Connection(self)
         self.service.conn.add_restschema(self.service.restschema)
         
@@ -76,13 +84,13 @@ class BasicTest(unittest.TestCase):
         x = self.service.bind_resource('x')
         self.assertEqual(type(x), Resource)
 
-        resp = x.get()
+        resp = x.links.get()
         self.assertEqual(resp.data, 5)
         
-        resp = x.action(20)
+        resp = x.links.action(20)
         self.assertEqual(resp.data, 21)
         
-        resp = x.action2()
+        resp = x.links.action2()
         self.assertEqual(resp.data, {'t1':15, 't2': 'foo'})
         
 if __name__ == '__main__':
