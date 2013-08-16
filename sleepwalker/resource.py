@@ -76,7 +76,7 @@ class Resource(object):
                 if key in self.links:
                     return partial(self.resource._follow, self.links[key])
             def __repr__(self):
-                return self.links
+                return str(self.links)
         return Links(self, self.schema.jsonschema.links)
 
     def _follow(self, link, *args, **kwargs):
