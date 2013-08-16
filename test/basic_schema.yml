@@ -1,0 +1,41 @@
+restSchemaVersion: "2.0"
+name: "Basic"
+version: "1.0"
+title: "REST API for a book catalog"
+servicePath: "/api/basic/1.0"
+types:
+   t:
+      type: object
+      example:  { t1: 15, t2: 'foo' }
+      properties:
+         t1: { type: number }
+         t2: { type: string }
+      
+resources:
+   x:
+      type: number
+      example: 5
+      links:
+         self: { path: '$/x' }
+         get: 
+            method: GET
+            response: { $ref: x }
+         set: 
+            method: PUT
+            request: { $ref: x }
+            response: { $ref: x }
+
+         action: 
+            method: POST
+            request:
+               type: number
+               example: 20
+            response: 
+               type: number
+               example: 21
+            path: '$/x/action'
+            
+         action2: 
+            method: GET
+            response: { $ref: t }
+            path: '$/x/action2'
