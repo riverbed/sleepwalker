@@ -25,26 +25,28 @@ class Schema(object):
             if 'self' in self.jsonschema.links:
                 selflink = self.jsonschema.links['self']
                 s = s + ' "' + selflink.path.template + '"'
-            s = s + ' type ' + self.jsonschema.name
+            s = s + ' type ' + self.jsonschema.fullname()
         return '<' + s + '>'
         
     def bind(self, **kwargs):
         selflink = self.jsonschema.links['self']
-        vars = {}
+        variables = {}
         for var in uritemplate.variables(selflink.path.template):
             if var not in kwargs:
                 raise MissingParameter('No value provided for parameter "%s" in self template: %s' %
                                        (var, selflink.path.template))
 
-            vars[var] = kwargs[var]
+            variables[var] = kwargs[var]
 
         for var in kwargs:
-            if var not in vars:
+            if var not in variables:
                 raise ValueError('Invalid parameter "%s" for self template: %s' %
                                  (var, selflink.path.template))
 
-        uri = selflink.path.resolve(vars)
-        return Resource(self.service, uri, schema=self, data=vars)
+        uri = selflink.path.resolve(variables)
+        if variables == {}:
+            variables = None
+        return Resource(self.service, uri, schema=self, data=variables)
     
 class Resource(object):
 
@@ -57,7 +59,7 @@ class Resource(object):
     def __repr__(self):
         s = 'Resource "%s"' % self.uri
         if self.schema:
-            s = s + ' type ' + self.schema.jsonschema.name
+            s = s + ' type ' + self.schema.jsonschema.fullname()
         return '<' + s + '>'
         
     def __getattr__(self, key):
@@ -75,24 +77,33 @@ class Resource(object):
             def __getattr__(self, key):
                 if key in self.links:
                     return partial(self.resource._follow, self.links[key])
+                else:
+                    raise AttributeError("No such link '%s' for resource %s" % (key, self.resource))
             def __repr__(self):
                 return str(self.links)
+
+            def __contains__(self, key):
+                return key in self.links
+            
         return Links(self, self.schema.jsonschema.links)
 
+    def _resolve_path(self, path=None, **kwargs):
+        variables = copy.copy(self.data)
+
+        if path is None:
+            path = self.links['self'].path
+
+        for key,value in kwargs.iteritems():
+            variables[key] = value
+
+        return path.resolve(variables)
+    
     def _follow(self, link, *args, **kwargs):
         if link.path is not None:
-            vars = copy.copy(self.data)
-
-            # kwargs are used to ammed the data used to evaluate variables
-            # in the link
-            for key,value in kwargs.iteritems():
-                vars[key] = value
-
-            logger.debug("vars: %s" % vars)
-            logger.debug("temp: %s" % link.path.template)
-            # Determine the target path
-            uri = link.path.resolve(vars)
-
+            uri = self._resolve_path(link.path, **kwargs)
+        else:
+            uri = None
+            
         method = link.method
         if method is not None:
             if link.request is not None:
@@ -112,10 +123,15 @@ class Resource(object):
                 
             response = self.service.conn.json_request(uri, method, body, params)
 
-            if ((uri == self.uri) and
-                (link.response is not None) and
-                (link.response.fullid() == self.schema.jsonschema.fullid())):
+            #__import__('IPython').core.debugger.Pdb(color_scheme='Linux').set_trace() 
+            # Check if the response is the same as this resource
+            if ( (uri == self.uri) and 
+                 (link.response is not None) and
+                 link.response.isRef() and
+                 (link.response.refschema.fullid() == self.schema.jsonschema.fullid())):
                 self.data = response
+                logger.debug("Updating data for %s from %s" % (self, method))
+                logger.debug("...: %s" % response)
                 return self
 
             return Resource(self.service, uri, Schema(self.service, link.response), response)
@@ -124,5 +140,18 @@ class Resource(object):
             # Following a link to a target resource / link
             pass
 
+    def get(self, params=None, **kwargs):
+        '''Retrieve a copy of the data representation for this resource from the server.
+
+        If the schema defineds a 'get' link, that is used.  Otherwise a simple HTTP GET
+        is invoked.  On succeuss, the result is cached in self.data and returned.'''
         
+        if 'get' in self.links:
+            self.links.get(params, **kwargs)
+            return self.data
+
+        response = self.service.conn.json_request(self.uri, 'GET')
+        self.data = response
+
+        return response
         

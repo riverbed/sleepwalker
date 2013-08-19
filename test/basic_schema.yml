@@ -39,3 +39,17 @@ resources:
             method: GET
             response: { $ref: t }
             path: '$/x/action2'
+
+   item:
+      type: object
+      properties:
+         id: { type: number }
+         label: { type: string }
+
+      example:  { id: 1, label: foo}
+
+      links:
+         self: { path: '$/item/{id}' }
+         get:
+            method: GET
+            response: { $ref: item }
