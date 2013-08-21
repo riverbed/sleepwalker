@@ -8,15 +8,32 @@
 from reschema import RestSchema
 
 from sleepwalker.resource import Resource, Schema
+from sleepwalker.connection import Connection
 
 class ServiceException(Exception): pass
+
 
 class Service(object):
 
     def __init__(self):
         self.restschema = None
-        self.conn = None
+        self.connection = None
         
+    def add_connection(self, hostname, auth=None, port=None, verify=True):
+        """ Initialize new connection to hostname
+
+            If an existing connection would rather be used, simply
+            assign it to the `connection` instance variable instead.
+        """
+        # just a passthrough to Connection init, do we need this?
+        self.connection = Connection(hostname, auth, port, verify)
+
+    def fetch_restschema(self):
+        """Fetch the hosted rest-schema."""
+        # TODO compare local version if any to hosted version
+        # how to perform version checks, and what is the schema uri?
+        pass
+
     def load_restschema(self, filename):
         """Load rest-schema from the given filename."""
 
@@ -44,5 +61,3 @@ class Service(object):
         jsonschema = self.restschema.find_type(name)
         schema = Schema(self, jsonschema)
         return schema
-
-    

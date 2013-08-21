@@ -81,7 +81,6 @@ class Resource(object):
                     raise AttributeError("No such link '%s' for resource %s" % (key, self.resource))
             def __repr__(self):
                 return str(self.links)
-
             def __contains__(self, key):
                 return key in self.links
             
@@ -121,9 +120,8 @@ class Resource(object):
                 params = None
                 body = None
                 
-            response = self.service.conn.json_request(uri, method, body, params)
+            response = self.service.connection.json_request(method, uri, body, params)
 
-            #__import__('IPython').core.debugger.Pdb(color_scheme='Linux').set_trace() 
             # Check if the response is the same as this resource
             if ( (uri == self.uri) and 
                  (link.response is not None) and
@@ -143,14 +141,14 @@ class Resource(object):
     def get(self, params=None, **kwargs):
         '''Retrieve a copy of the data representation for this resource from the server.
 
-        If the schema defineds a 'get' link, that is used.  Otherwise a simple HTTP GET
+        If the schema defines a 'get' link, that is used.  Otherwise a simple HTTP GET
         is invoked.  On succeuss, the result is cached in self.data and returned.'''
         
         if 'get' in self.links:
             self.links.get(params, **kwargs)
             return self.data
 
-        response = self.service.conn.json_request(self.uri, 'GET')
+        response = self.service.connection.json_request('GET', self.uri)
         self.data = response
 
         return response
