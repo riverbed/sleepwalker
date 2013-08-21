@@ -77,6 +77,7 @@ class TestConnection(object):
                         return link.response.refschema.example
                     return link.response.example
 
+
 class BasicTest(unittest.TestCase):
 
     def setUp(self):
@@ -98,7 +99,7 @@ class BasicTest(unittest.TestCase):
         self.assertEqual(resp.data, 21)
         
         resp = x.links.action2()
-        self.assertEqual(resp.data, {'t1':15, 't2': 'foo'})
+        self.assertEqual(resp.data, {'t1': 15, 't2': 'foo'})
 
         x.data = 0
         val = x.get()
@@ -165,5 +166,5 @@ class ConnectionTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    logging.basicConfig(filename='test.log',level=logging.DEBUG)
+    logging.basicConfig(filename='test.log', level=logging.DEBUG)
     unittest.main()

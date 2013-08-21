@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 
 class MissingParameter(Exception): pass
 
+
 class Schema(object):
     def __init__(self, service, jsonschema=None):
         self.service = service
@@ -47,7 +48,8 @@ class Schema(object):
         if variables == {}:
             variables = None
         return Resource(self.service, uri, schema=self, data=variables)
-    
+
+
 class Resource(object):
 
     def __init__(self, service, uri, schema=None, data=None):
@@ -92,7 +94,7 @@ class Resource(object):
         if path is None:
             path = self.links['self'].path
 
-        for key,value in kwargs.iteritems():
+        for key, value in kwargs.iteritems():
             variables[key] = value
 
         return path.resolve(variables)
@@ -139,11 +141,11 @@ class Resource(object):
             pass
 
     def get(self, params=None, **kwargs):
-        '''Retrieve a copy of the data representation for this resource from the server.
+        """Retrieve a copy of the data representation for this resource from the server.
 
         If the schema defines a 'get' link, that is used.  Otherwise a simple HTTP GET
-        is invoked.  On succeuss, the result is cached in self.data and returned.'''
-        
+        is invoked.  On succeuss, the result is cached in self.data and returned."""
+
         if 'get' in self.links:
             self.links.get(params, **kwargs)
             return self.data
@@ -152,4 +154,4 @@ class Resource(object):
         self.data = response
 
         return response
-        
+
