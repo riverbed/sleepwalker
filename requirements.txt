@@ -4,5 +4,5 @@ simplejson>=3.3.0
 jsonpointer>=1.0
 nose==1.3.0
 Markdown>=2.2.1
--e git+ssh://git@github.com/uri-templates/uritemplate-py.git#egg=uritemplate-dev
--e git+git@git.lab.nbttech.com:reschema#egg=reschema-dev
+-e git+ssh://git@github.com/uri-templates/uritemplate-py.git#egg=uritemplate
+-e git+git@git.lab.nbttech.com:reschema#egg=reschema
