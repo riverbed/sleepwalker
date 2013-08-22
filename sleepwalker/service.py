@@ -53,30 +53,28 @@ class Service(object):
         schema = Schema(self, jsonschema)
         return schema.bind(**kwargs)
 
+    def _lookup(self, name, lookup, exception_class):
+        if self.restschema is None:
+            raise ServiceException("No rest-schema defined")
+
+        try:
+            jsonschema = lookup(name)
+        except KeyError:
+            raise exception_class('%s not found in schema' % name)
+
+        schema = Schema(self, jsonschema)
+        return schema
+
     def lookup_resource(self, name):
         """ Look up resource `name`, and return the schema
 
             `name` - name of resource
         """
-        if self.restschema is None:
-            raise ServiceException("No rest-schema")
-        try:
-            jsonschema = self.restschema.find_resource(name)
-            schema = Schema(self, jsonschema)
-            return schema
-        except KeyError:
-            raise ResourceException('Resource %s not found in schema' % name)
+        return self._lookup(name, self.restschema.find_resource, ResourceException)
 
     def lookup_type(self, name):
         """ Look up type `name`, and return the schema
 
             `name` - name of type
         """
-        if self.restschema is None:
-            raise ServiceException("No rest-schema")
-        try:
-            jsonschema = self.restschema.find_type(name)
-            schema = Schema(self, jsonschema)
-            return schema
-        except KeyError:
-            raise TypeException('Type %s not found in schema' % name)
+        return self._lookup(name, self.restschema.find_type, TypeException)
