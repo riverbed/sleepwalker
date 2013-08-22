@@ -7,10 +7,10 @@
 
 from reschema import RestSchema
 
-from sleepwalker.resource import Resource, Schema
-from sleepwalker.connection import Connection
+from .resource import Resource, Schema
+from .connection import Connection
+from .exceptions import ServiceException
 
-class ServiceException(Exception): pass
 
 
 class Service(object):

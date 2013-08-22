@@ -16,6 +16,11 @@ class MissingRestSchema(SleepwalkerException):
     pass
 
 
+class ServiceException(SleepwalkerException): 
+    """ Sleepwalker Service error. """
+    pass
+
+
 class MissingParameter(SleepwalkerException):
     """ URI template missing one or more parameters. """
     pass
