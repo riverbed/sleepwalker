@@ -5,3 +5,7 @@
 #   https://github.com/riverbed/reschema/blob/master/LICENSE ("License").  
 # This software is distributed "AS IS" as set forth in the License.
 
+from .service import Service
+from .connection import Connection
+from .resource import Schema, Resource
+from .exceptions import SleepwalkerException, ConnectionError, MissingRestSchema

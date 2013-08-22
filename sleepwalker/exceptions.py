@@ -11,7 +11,7 @@ class SleepwalkerException(Exception):
     pass
 
 
-class NoSchemaFound(SleepwalkerException):
+class MissingRestSchema(SleepwalkerException):
     """ An error occurred when trying to access the RestSchema. """
     pass
 
