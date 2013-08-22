@@ -9,7 +9,7 @@ from reschema import RestSchema
 
 from .resource import Resource, Schema
 from .connection import Connection
-from .exceptions import ServiceException
+from .exceptions import ServiceException, ResourceException, TypeException
 
 
 
@@ -41,6 +41,11 @@ class Service(object):
         self.restschema.load(filename)
 
     def bind_resource(self, name, **kwargs):
+        """ Look up resource `name`, bind it and return the bound Resource.
+
+            `name` - name of resource
+            `**kwargs` - dict of attributes required to bind resource
+        """
         if self.restschema is None:
             raise ServiceException("No rest-schema")
 
@@ -49,15 +54,29 @@ class Service(object):
         return schema.bind(**kwargs)
 
     def lookup_resource(self, name):
+        """ Look up resource `name`, and return the schema
+
+            `name` - name of resource
+        """
         if self.restschema is None:
             raise ServiceException("No rest-schema")
-        jsonschema = self.restschema.find_resource(name)
-        schema = Schema(self, jsonschema)
-        return schema
+        try:
+            jsonschema = self.restschema.find_resource(name)
+            schema = Schema(self, jsonschema)
+            return schema
+        except KeyError:
+            raise ResourceException('Resource %s not found in schema' % name)
 
     def lookup_type(self, name):
+        """ Look up type `name`, and return the schema
+
+            `name` - name of type
+        """
         if self.restschema is None:
             raise ServiceException("No rest-schema")
-        jsonschema = self.restschema.find_type(name)
-        schema = Schema(self, jsonschema)
-        return schema
+        try:
+            jsonschema = self.restschema.find_type(name)
+            schema = Schema(self, jsonschema)
+            return schema
+        except KeyError:
+            raise TypeException('Type %s not found in schema' % name)

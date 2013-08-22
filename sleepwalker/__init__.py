@@ -8,4 +8,5 @@
 from .service import Service
 from .connection import Connection
 from .resource import Schema, Resource
-from .exceptions import SleepwalkerException, ConnectionError, MissingRestSchema
+from .exceptions import (SleepwalkerException, ConnectionError, MissingRestSchema,
+                         ResourceException, TypeException)

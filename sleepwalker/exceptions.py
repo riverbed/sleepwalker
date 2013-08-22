@@ -6,41 +6,53 @@
 # This software is distributed "AS IS" as set forth in the License.
 
 
+#
+# General exception and base class
+#
 class SleepwalkerException(Exception):
     """ Base exception class for sleepwalker errors. """
-    pass
 
 
-class MissingRestSchema(SleepwalkerException):
-    """ An error occurred when trying to access the RestSchema. """
-    pass
-
-
+#
+# Service Exceptions
+#
 class ServiceException(SleepwalkerException): 
     """ Sleepwalker Service error. """
-    pass
 
 
+class MissingRestSchema(ServiceException):
+    """ An error occurred when trying to access the RestSchema. """
+
+
+class ResourceException(ServiceException): 
+    """ An error occurred with a Resource. """
+
+
+class TypeException(ServiceException): 
+    """ An error occurred with a Type. """
+
+
+#
+# Schema and operational exceptions
+#
 class MissingParameter(SleepwalkerException):
     """ URI template missing one or more parameters. """
-    pass
 
 
 class InvalidParameter(SleepwalkerException): 
     """ URI template found an invalid parameter. """
-    pass
 
 
 class LinkError(SleepwalkerException): 
     """ Raised if invalid link called on Resource. """
-    pass
 
 
+#
+# Connection related exceptions
+#
 class ConnectionError(SleepwalkerException): 
     """ A connection error occurred. """
-    pass
 
 
 class URLError(ConnectionError): 
     """ An error occurred when building a URL. """
-    pass

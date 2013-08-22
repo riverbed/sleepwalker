@@ -26,6 +26,8 @@ TEST_PATH = os.path.abspath(os.path.dirname(__file__))
 
 
 class TestConnection(object):
+    """ Connection test class which echos 'example's back from a restschema.
+    """
 
     def __init__(self, test):
         self.test = test
