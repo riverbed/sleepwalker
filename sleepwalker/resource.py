@@ -10,9 +10,9 @@ import copy
 import logging
 from functools import partial
 
-logger = logging.getLogger(__name__)
+from .exceptions import MissingParameter, InvalidParameter, LinkError
 
-class MissingParameter(Exception): pass
+logger = logging.getLogger(__name__)
 
 
 class Schema(object):
@@ -41,8 +41,8 @@ class Schema(object):
 
         for var in kwargs:
             if var not in variables:
-                raise ValueError('Invalid parameter "%s" for self template: %s' %
-                                 (var, selflink.path.template))
+                raise InvalidParameter('Invalid parameter "%s" for self template: %s' %
+                                       (var, selflink.path.template))
 
         uri = selflink.path.resolve(variables)
         if variables == {}:
@@ -80,7 +80,8 @@ class Resource(object):
                 if key in self.links:
                     return partial(self.resource._follow, self.links[key])
                 else:
-                    raise AttributeError("No such link '%s' for resource %s" % (key, self.resource))
+                    raise LinkError("No such link '%s' for resource %s" % 
+                                    (key, self.resource))
             def __repr__(self):
                 return str(self.links)
             def __contains__(self, key):
@@ -154,4 +155,3 @@ class Resource(object):
         self.data = response
 
         return response
-

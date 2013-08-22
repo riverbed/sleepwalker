@@ -24,8 +24,6 @@ logger = logging.getLogger(__name__)
 
 TEST_PATH = os.path.abspath(os.path.dirname(__file__))
 
-class NoSchemaFound(Exception): pass
-
 
 class TestConnection(object):
 

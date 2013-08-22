@@ -13,9 +13,7 @@ from requests.utils import prepend_scheme_if_needed
 from requests.packages.urllib3.util import parse_url
 from requests.structures import CaseInsensitiveDict
 
-
-class ConnectionError(RuntimeError): pass
-class URLError(RuntimeError): pass
+from .exceptions import ConnectionError, URLError
 
 
 class Connection(object):
