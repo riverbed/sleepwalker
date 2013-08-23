@@ -53,28 +53,31 @@ class Schema(object):
 class Links(object):
     """ Collection of resource links, initialized as property of Resource """
     def __init__(self, resource, links):
-        self.resource = resource
-        self.links = links
+        self._resource = resource
+        self._links = links
 
     def __getattr__(self, key):
         try:
-            return partial(self.resource._follow, self.links[key])
+            return partial(self._resource._follow, self._links[key])
         except KeyError:
             raise LinkError("No such link '%s' for resource %s" % 
-                            (key, self.resource))
+                            (key, self._resource))
 
     def __getitem__(self, key):
         return self.__getattr__(key)
 
     def __repr__(self):
-        return '<Resource %s links: %s>' % (self.resource.uri, 
-                                           ','.join(self.links.keys())) 
+        return '<Resource %s links: %s>' % (self._resource.uri, 
+                                            ','.join(self._links.keys()))
 
     def __str__(self):
-        return str(self.links)
+        return str(self._links)
 
     def __contains__(self, key):
-        return key in self.links
+        return key in self._links
+
+    def __dir__(self):
+        return self._links.keys()
             
 
 class Resource(object):
@@ -109,7 +112,9 @@ class Resource(object):
 
         return path.resolve(variables)
     
-    def _follow(self, link, *args, **kwargs):
+    def _follow(self, link, data=None, validate=True, **kwargs):
+        """ Internal method to validate and follow Resource links
+        """
         if link.path is not None:
             uri = self._resolve_path(link.path, **kwargs)
         else:
@@ -119,20 +124,23 @@ class Resource(object):
         if method is not None:
             if link.request is not None:
                 # Validate the request
-                link.request.validate(args[0])
+                link.request.validate(data)
 
             # Performing and HTTP transaction
             if method == "GET":
-                params = args[0] if len(args) > 0 else None
+                params = data
                 body = None
             elif method in ["POST", "PUT"]:
                 params = None
-                body = args[0]
+                body = data
             else:
                 params = None
                 body = None
                 
-            response = self.service.connection.json_request(method, uri, body, params)
+            response = self.service.request(method, uri, body, params)
+
+            if validate and link.response is not None:
+                link.response.validate(response)
 
             # Check if the response is the same as this resource
             if ( (uri == self.uri) and 
@@ -160,7 +168,7 @@ class Resource(object):
             self.links.get(params, **kwargs)
             return self.data
 
-        response = self.service.connection.json_request('GET', self.uri)
+        response = self.service.request('GET', self.uri)
         self.data = response
 
         return response

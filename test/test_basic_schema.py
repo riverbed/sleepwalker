@@ -36,7 +36,7 @@ class TestConnection(object):
     def add_restschema(self, rs):
         self.restschemas.append(rs)
         
-    def json_request(self, method, uri, data, params):
+    def json_request(self, method, uri, data, params, headers):
         logger.info("%s %s params=%s, data=%s" % (method, uri, params, data))
         for rs in self.restschemas:
             m = re.match("^%s(.*)$" % rs.servicePath, uri)

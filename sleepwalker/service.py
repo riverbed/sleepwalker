@@ -7,10 +7,9 @@
 
 from reschema import RestSchema
 
-from .resource import Resource, Schema
+from .resource import Schema
 from .connection import Connection
 from .exceptions import ServiceException, ResourceException, TypeException
-
 
 
 class Service(object):
@@ -27,6 +26,22 @@ class Service(object):
         """
         # just a passthrough to Connection init, do we need this?
         self.connection = Connection(hostname, auth, port, verify)
+
+    def request(self, method, uri, body=None, params=None, headers=None):
+        """ Make request through connection and return result
+        """
+        if not self.connection:
+            raise ServiceException('No connection defined for service.')
+        return self.connection.json_request(method, uri, body, params, headers)
+
+    @property
+    def response(self):
+        """ Last response from server
+        """
+        try:
+            return self.connection.response
+        except:
+            return None
 
     def fetch_restschema(self):
         """Fetch the hosted rest-schema."""
