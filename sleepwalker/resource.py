@@ -5,10 +5,14 @@
 #   https://github.com/riverbed/flyscript-portal/blob/master/LICENSE ("License").
 # This software is distributed "AS IS" as set forth in the License.
 
-import uritemplate
 import copy
 import logging
+import urlparse
+import uritemplate
 from functools import partial
+
+from requests.sessions import merge_setting
+from requests.packages.urllib3.util import parse_url
 
 from .exceptions import MissingParameter, InvalidParameter, LinkError
 
@@ -113,7 +117,7 @@ class Resource(object):
         return path.resolve(variables)
     
     def _follow(self, link, data=None, validate=True, **kwargs):
-        """ Internal method to validate and follow Resource links
+        """ Validate and follow Resource links
         """
         if link.path is not None:
             uri = self._resolve_path(link.path, **kwargs)
@@ -126,7 +130,7 @@ class Resource(object):
                 # Validate the request
                 link.request.validate(data)
 
-            # Performing and HTTP transaction
+            # Performing an HTTP transaction
             if method == "GET":
                 params = data
                 body = None
@@ -139,6 +143,7 @@ class Resource(object):
                 
             response = self.service.request(method, uri, body, params)
 
+            # Validate response by default
             if validate and link.response is not None:
                 link.response.validate(response)
 
@@ -154,9 +159,40 @@ class Resource(object):
 
             return Resource(self.service, uri, Schema(self.service, link.response), response)
 
+        elif link.target and not link.path:
+            # Return target instance only
+            return self.service.bind_resource(link.target_id, **kwargs)
+
+        elif link.target and link.path:
+            # Follow the path defined in the link, but only validate the response
+            # as defined in the target
+            method = link.target.method
+
+            # uri resolved above will likely have params embedded
+            parsed = parse_url(uri)
+            uri = parsed.path
+            uri_params = dict(urlparse.parse_qsl(parsed.query))
+
+            if method == "GET":
+                params = merge_setting(uri_params, data)
+                body = None
+            elif method in ["POST", "PUT"]:
+                params = uri_params
+                body = data
+            else:
+                params = None
+                body = None
+
+            response = self.service.request(method, uri, body, params)
+
+            # Validate response by default
+            if validate and link.target.response is not None:
+                link.target.response.validate(response)
+
+            return Resource(self.service, uri, Schema(self.service, link.target.response), response)
+
         else:
-            # Following a link to a target resource / link
-            pass
+            raise LinkError('Unable to determine link to follow')
 
     def get(self, params=None, **kwargs):
         """Retrieve a copy of the data representation for this resource from the server.
