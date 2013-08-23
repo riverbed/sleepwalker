@@ -50,6 +50,33 @@ class Schema(object):
         return Resource(self.service, uri, schema=self, data=variables)
 
 
+class Links(object):
+    """ Collection of resource links, initialized as property of Resource """
+    def __init__(self, resource, links):
+        self.resource = resource
+        self.links = links
+
+    def __getattr__(self, key):
+        try:
+            return partial(self.resource._follow, self.links[key])
+        except KeyError:
+            raise LinkError("No such link '%s' for resource %s" % 
+                            (key, self.resource))
+
+    def __getitem__(self, key):
+        return self.__getattr__(key)
+
+    def __repr__(self):
+        return '<Resource %s links: %s>' % (self.resource.uri, 
+                                           ','.join(self.links.keys())) 
+
+    def __str__(self):
+        return str(self.links)
+
+    def __contains__(self, key):
+        return key in self.links
+            
+
 class Resource(object):
 
     def __init__(self, service, uri, schema=None, data=None):
@@ -57,6 +84,7 @@ class Resource(object):
         self.service = service
         self.schema = schema
         self.data = data
+        self.links = Links(self, self.schema.jsonschema.links)
         
     def __repr__(self):
         s = 'Resource "%s"' % self.uri
@@ -69,25 +97,6 @@ class Resource(object):
             return self.__dict__[key]
 
         raise AttributeError("No such attribute '%s'" % key)
-
-    @property
-    def links(self):
-        class Links(object):
-            def __init__(self, resource, links):
-                self.resource = resource
-                self.links = links
-            def __getattr__(self, key):
-                if key in self.links:
-                    return partial(self.resource._follow, self.links[key])
-                else:
-                    raise LinkError("No such link '%s' for resource %s" % 
-                                    (key, self.resource))
-            def __repr__(self):
-                return str(self.links)
-            def __contains__(self, key):
-                return key in self.links
-            
-        return Links(self, self.schema.jsonschema.links)
 
     def _resolve_path(self, path=None, **kwargs):
         variables = copy.copy(self.data)

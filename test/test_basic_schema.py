@@ -17,7 +17,7 @@ from reschema.jsonschema import Ref
 from requests.exceptions import HTTPError
 
 from sleepwalker.service import Service
-from sleepwalker.resource import Resource, Schema
+from sleepwalker.resource import Resource
 from sleepwalker.connection import Connection, URLError
 
 logger = logging.getLogger(__name__)
