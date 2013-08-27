@@ -99,11 +99,8 @@ class Resource(object):
             s = s + ' type ' + self.schema.jsonschema.fullname()
         return '<' + s + '>'
         
-    def __getattr__(self, key):
-        if key in self.__dict__:
-            return self.__dict__[key]
-
-        raise AttributeError("No such attribute '%s'" % key)
+    def __getitem__(self, key):
+        return self.data[key]
 
     def _resolve_path(self, path=None, **kwargs):
         variables = copy.copy(self.data)
