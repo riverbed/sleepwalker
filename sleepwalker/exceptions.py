@@ -46,7 +46,6 @@ class InvalidParameter(SleepwalkerException):
 class LinkError(SleepwalkerException): 
     """ Raised if invalid link called on Resource. """
 
-
 #
 # Connection related exceptions
 #
@@ -56,3 +55,4 @@ class ConnectionError(SleepwalkerException):
 
 class URLError(ConnectionError): 
     """ An error occurred when building a URL. """
+

@@ -20,20 +20,45 @@ logger = logging.getLogger(__name__)
 
 
 class Schema(object):
-    def __init__(self, service, jsonschema=None):
+    """ A Schema object manages access to the schema for a class of resource.
+
+    The Schema object is the generic form of a REST resource as defined by
+    a json-schema.  If the json-schema includes a 'self' link, the bind()
+    method may be used to instantiate conrete resources at fully defined
+    addresses.
+
+    """
+
+    def __init__(self, service, jsonschema):
+        """ Create a Schema bound to the given service as defined by jsonschema. """
         self.service = service
         self.jsonschema = jsonschema
+
         
     def __repr__(self):
         s = 'Schema' 
-        if self.jsonschema:
-            if 'self' in self.jsonschema.links:
-                selflink = self.jsonschema.links['self']
-                s = s + ' "' + selflink.path.template + '"'
-            s = s + ' type ' + self.jsonschema.fullname()
+        if 'self' in self.jsonschema.links:
+            selflink = self.jsonschema.links['self']
+            s = s + ' "' + selflink.path.template + '"'
+        s = s + ' type ' + self.jsonschema.fullname()
         return '<' + s + '>'
         
     def bind(self, **kwargs):
+        """ Return a Resource object by binding variables in the 'self' link.
+
+        This method is used to instantiate concreate Resource objects
+        with fully qualified URIs based on the 'self' link associated
+        with the jsonschema for this object.  The **kwargs must match
+        the parameters defined in the self link, if any.
+
+        Example:
+        >>> book_schema = Schema(service, book_jsonschema)
+        >>> book1 = book_schema.bind(id=1)
+        
+        """
+        if 'self' not in self.jsonschema.links:
+            raise LinkError("Cannot bind a schema that has no 'self' link")
+        
         selflink = self.jsonschema.links['self']
         variables = {}
         for var in uritemplate.variables(selflink.path.template):
@@ -55,7 +80,23 @@ class Schema(object):
 
 
 class Links(object):
-    """ Collection of resource links, initialized as property of Resource """
+    """ Collection of resource links, initialized as property of Resource.
+
+    The list of possible links is derived directly from the jsonschema
+    links property.  Each link name is callable directly as a method.
+
+    The primary use of the links object is used as follows:
+    >>> links = Links(resource, resource.schema.jsonschema.links)
+    >>> links.<linkname>(<args>)
+
+    This is identical to the following:
+    >>> link = resource.schema.jsonschema.links[<linkname>]
+    >>> resource._follow(link, <args>)
+
+    As an object, this supports autocompletion and inspection.
+
+    """
+    
     def __init__(self, resource, links):
         self._resource = resource
         self._links = links
@@ -85,6 +126,13 @@ class Links(object):
             
 
 class Resource(object):
+    """ A concrete representation of a resource at a fully defined address.
+
+    The Resource object manages interaction with a REST resource at a
+    defined address.  If a schema is attached, the schema describes the
+    abstract resource definition via a jsonschema.
+
+    """
 
     def __init__(self, service, uri, schema=None, data=None):
         self.uri = uri
@@ -100,7 +148,9 @@ class Resource(object):
         return '<' + s + '>'
         
     def __getitem__(self, key):
-        return self.data[key]
+        """ Index into the resource object following the schema structure.
+        """
+        return None
 
     def _resolve_path(self, path=None, **kwargs):
         variables = copy.copy(self.data)
@@ -112,7 +162,14 @@ class Resource(object):
             variables[key] = value
 
         return path.resolve(variables)
-    
+
+    def follow(self, linkname, data=None, validate=True, **kwargs):
+        """ Follow a link by name. """
+        if linkname not in self.schema.jsonschema.links:
+            raise LinkError("No such link '%s'" % linkname)
+
+        return self._follow(self.schema.jsonschema.links, data=data, validate=validate, **kwargs)
+        
     def _follow(self, link, data=None, validate=True, **kwargs):
         """ Validate and follow Resource links
         """
@@ -192,16 +249,68 @@ class Resource(object):
             raise LinkError('Unable to determine link to follow')
 
     def get(self, params=None, **kwargs):
-        """Retrieve a copy of the data representation for this resource from the server.
+        """ Retrieve a copy of the data representation for this resource from the server.
 
-        If the schema defines a 'get' link, that is used.  Otherwise a simple HTTP GET
-        is invoked.  On succeuss, the result is cached in self.data and returned."""
+        This relies on the schema 'get' link.  This will always
+        perform an interaction with the server to refresh the
+        representation as per the 'get' link.  Any keyword arguments
+        are passed as URI parameters and must conform to the
+        'links.get.request' defintion in the schema.
+        
+        On success, the result is cached in self.data and returned.
 
-        if 'get' in self.links:
-            self.links.get(params, **kwargs)
-            return self.data
+        """
 
-        response = self.service.request('GET', self.uri)
-        self.data = response
+        if 'get' not in self.links:
+            raise LinkError("Resource does not support 'get' link")
 
-        return response
+        self.links.get(params, **kwargs)
+        return self.data
+
+    def set(self, obj):
+        """ Modify the data representation for this resource from the server.
+
+        This relies on the schema 'set' link.  This will always
+        perform an interaction with the server to attempt an update
+        of the representation as per the 'set' link.  Any keyword
+        arguments are passed as URI parameters and must conform to the
+        'links.get.request' defintion in the schema.
+        
+        On success, the result is cached in self.data and returned.
+
+        """
+        pass
+    
+    def subresource(self, prop):
+        """ Index into the resource based on the structure of the data representation.
+
+        This method allows indexing into a single resource to allow accessing
+        nested links and data.
+
+        Example:
+        >>> book = Resource(...)
+        >>> book.links.get()
+        >>> book.data
+        { 'id': 101,
+          'title': 'My book',
+          'author_ids': [ 1, 2 ] }
+        >>> book['id'].data
+        101
+        >>> book['author_ids'].data
+        [ 1, 2]
+        >>> book['author_ids'][0].data
+        1
+        >>> author = book['author_ids'][0].links.author()
+        >>> author.get()
+        >>> author.data
+        { 'id' : 1,
+          'name' : 'John Doe' }
+
+        """
+        # XXXCJ - this could return an Resource object with a fragment representing the
+        #   nested data element, or maybe a SubResource object (new class)
+        pass
+        
+        
+   
+        
