@@ -3,7 +3,7 @@ try:
 except ImportError:
     from distutils.core import setup
 
-from sleepwalker.version import get_git_version
+from contrib.version import get_git_version
 
 setup(name="sleepwalker",
       version=get_git_version(),
