@@ -18,6 +18,8 @@ from .exceptions import MissingParameter, InvalidParameter, LinkError
 
 logger = logging.getLogger(__name__)
 
+VALIDATE_REQUEST = True
+VALIDATE_RESPONSE = False
 
 class Schema(object):
     """ A Schema object manages access to the schema for a class of resource.
@@ -79,34 +81,28 @@ class Schema(object):
         return Resource(self.service, uri, schema=self, data=variables)
 
 
-class Links(object):
+class _Links(object):
     """ Collection of resource links, initialized as property of Resource.
 
     The list of possible links is derived directly from the jsonschema
     links property.  Each link name is callable directly as a method.
 
-    The primary use of the links object is used as follows:
-    >>> links = Links(resource, resource.schema.jsonschema.links)
-    >>> links.<linkname>(<args>)
+    The primary use of the links object is via the resource 'links' property:
+    >>> resource.links.<linkname>(<args>)
 
     This is identical to the following:
-    >>> link = resource.schema.jsonschema.links[<linkname>]
-    >>> resource._follow(link, <args>)
+    >>> resource.follow(<linkname>, <args>)
 
     As an object, this supports autocompletion and inspection.
 
     """
     
-    def __init__(self, resource, links):
+    def __init__(self, resource):
         self._resource = resource
-        self._links = links
+        self._links = resource.schema.jsonschema.links
 
     def __getattr__(self, key):
-        try:
-            return partial(self._resource._follow, self._links[key])
-        except KeyError:
-            raise LinkError("No such link '%s' for resource %s" % 
-                            (key, self._resource))
+        return partial(self._resource.follow, key)
 
     def __getitem__(self, key):
         return self.__getattr__(key)
@@ -139,7 +135,7 @@ class Resource(object):
         self.service = service
         self.schema = schema
         self.data = data
-        self.links = Links(self, self.schema.jsonschema.links)
+        self.links = _Links(self)
         
     def __repr__(self):
         s = 'Resource "%s"' % self.uri
@@ -147,11 +143,6 @@ class Resource(object):
             s = s + ' type ' + self.schema.jsonschema.fullname()
         return '<' + s + '>'
         
-    def __getitem__(self, key):
-        """ Index into the resource object following the schema structure.
-        """
-        return None
-
     def _resolve_path(self, path=None, **kwargs):
         variables = copy.copy(self.data)
 
@@ -163,16 +154,13 @@ class Resource(object):
 
         return path.resolve(variables)
 
-    def follow(self, linkname, data=None, validate=True, **kwargs):
+    def follow(self, linkname, data=None, **kwargs):
         """ Follow a link by name. """
         if linkname not in self.schema.jsonschema.links:
-            raise LinkError("No such link '%s'" % linkname)
+            raise LinkError("%s has no link '%s'" % (self, linkname))
 
-        return self._follow(self.schema.jsonschema.links, data=data, validate=validate, **kwargs)
-        
-    def _follow(self, link, data=None, validate=True, **kwargs):
-        """ Validate and follow Resource links
-        """
+        link = self.schema.jsonschema.links[linkname]
+
         if link.path is not None:
             uri = self._resolve_path(link.path, **kwargs)
         else:
@@ -180,7 +168,7 @@ class Resource(object):
             
         method = link.method
         if method is not None:
-            if link.request is not None:
+            if VALIDATE_REQUEST and link.request is not None:
                 # Validate the request
                 link.request.validate(data)
 
@@ -197,8 +185,8 @@ class Resource(object):
                 
             response = self.service.request(method, uri, body, params)
 
-            # Validate response by default
-            if validate and link.response is not None:
+            # Validate response 
+            if VALIDATE_RESPONSE and link.response is not None:
                 link.response.validate(response)
 
             # Check if the response is the same as this resource
@@ -239,14 +227,14 @@ class Resource(object):
 
             response = self.service.request(method, uri, body, params)
 
-            # Validate response by default
-            if validate and link.target.response is not None:
+            # Validate response
+            if VALIDATE_RESPONSE and link.target.response is not None:
                 link.target.response.validate(response)
 
             return Resource(self.service, uri, Schema(self.service, link.target.response), response)
 
         else:
-            raise LinkError('Unable to determine link to follow')
+            raise LinkError("%s: Unable to follow link '%s', invalid definition")
 
     def get(self, params=None, **kwargs):
         """ Retrieve a copy of the data representation for this resource from the server.
@@ -280,7 +268,12 @@ class Resource(object):
 
         """
         pass
-    
+
+    def __getitem__(self, key):
+        """ Index into the resource object following the schema structure.
+        """
+        return self.subresource(key)
+
     def subresource(self, prop):
         """ Index into the resource based on the structure of the data representation.
 
@@ -309,6 +302,7 @@ class Resource(object):
         """
         # XXXCJ - this could return an Resource object with a fragment representing the
         #   nested data element, or maybe a SubResource object (new class)
+        
         pass
         
         

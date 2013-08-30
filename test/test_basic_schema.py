@@ -29,7 +29,7 @@ class TestConnection(object):
     """ Connection test class which echos 'example's back from a restschema.
     """
 
-    def __init__(self, test):
+    def __init__(self, test=None):
         self.test = test
         self.restschemas = []
 
@@ -43,7 +43,7 @@ class TestConnection(object):
             if m:
                 break
 
-        self.test.assertIsNotNone(m)
+        self.test and self.test.assertIsNotNone(m)
 
         for r in rs.resources.values():
             for link in r.links.values():
@@ -70,7 +70,7 @@ class TestConnection(object):
                     if type(r) is Ref:
                         r = r.refschema
                     r.validate(data)
-                    self.test.assertEqual(data, r.example)
+                    self.test and self.test.assertEqual(data, r.example)
 
                 if link.response is not None:
                     if type(link.response) is Ref:
@@ -168,3 +168,4 @@ class ConnectionTest(unittest.TestCase):
 if __name__ == '__main__':
     logging.basicConfig(filename='test.log', level=logging.DEBUG)
     unittest.main()
+
