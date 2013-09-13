@@ -35,7 +35,7 @@ class TestConnection(object):
 
     def add_restschema(self, rs):
         self.restschemas.append(rs)
-        
+
     def json_request(self, method, uri, data, params, headers):
         logger.info("%s %s params=%s, data=%s" % (method, uri, params, data))
         for rs in self.restschemas:
@@ -55,7 +55,7 @@ class TestConnection(object):
                 values = {}
                 for v in vars:
                     values[v] = "__VAR__"
-                    
+
                 uri_re = uritemplate.expand(template, values)
                 if uri_re[0] == '$':
                     uri_re = "^" + rs.servicePath + uri_re[1:] + "$"
@@ -97,7 +97,7 @@ class BasicTest(unittest.TestCase):
 
         resp = x.links.action(20)
         self.assertEqual(resp.data, 21)
-        
+
         resp = x.links.action2()
         self.assertEqual(resp.data, {'t1': 15, 't2': 'foo'})
 
@@ -139,18 +139,22 @@ class ConnectionTest(unittest.TestCase):
         conn = Connection(HTTPSBIN)
         self.assertEqual(conn.hostname, HTTPSBIN)
 
-        conn = Connection('example.com', port='80')
+        conn = Connection('http://example.com')
         self.assertEqual(conn.hostname, 'http://example.com')
 
-        conn = Connection('example.com', port='443')
+        conn = Connection('https://example.com')
         self.assertEqual(conn.hostname, 'https://example.com')
 
-        conn = Connection('example.com', port='20483')
+        conn = Connection('https://example.com', port='20483')
         self.assertEqual(conn.hostname, 'https://example.com:20483')
+
+    def test_missing_schema(self):
+        with self.assertRaises(URLError):
+            Connection('example.com', port=666)
 
     def test_port_mismatch(self):
         with self.assertRaises(URLError):
-            Connection('example.com:20483', port=666)
+            Connection('http://example.com:20483', port=666)
 
     def test_json_request(self):
         conn = Connection(HTTPBIN)
@@ -168,4 +172,3 @@ class ConnectionTest(unittest.TestCase):
 if __name__ == '__main__':
     logging.basicConfig(filename='test.log', level=logging.DEBUG)
     unittest.main()
-
