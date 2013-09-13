@@ -28,29 +28,27 @@ class Service(object):
         self.connection = Connection(hostname, auth, port, verify)
 
     def request(self, method, uri, body=None, params=None, headers=None):
-        """ Make request through connection and return result
-        """
+        """ Make request through connection and return result. """
         if not self.connection:
             raise ServiceException('No connection defined for service.')
         return self.connection.json_request(method, uri, body, params, headers)
 
     @property
     def response(self):
-        """ Last response from server
-        """
+        """ Last response from server. """
         try:
             return self.connection.response
         except:
             return None
 
     def fetch_restschema(self):
-        """Fetch the hosted rest-schema."""
+        """ Fetch the hosted rest-schema. """
         # TODO compare local version if any to hosted version
         # how to perform version checks, and what is the schema uri?
         pass
 
     def load_restschema(self, filename):
-        """Load rest-schema from the given filename."""
+        """ Load rest-schema from the given filename. """
 
         self.restschema = RestSchema()
         self.restschema.load(filename)
