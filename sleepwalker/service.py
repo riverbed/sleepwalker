@@ -55,16 +55,16 @@ class Service(object):
         self.restschema = RestSchema()
         self.restschema.load(filename)
 
-    def bind_resource(self, name, **kwargs):
-        """ Look up resource `name`, bind it and return the bound Resource.
+    def bind_resource(self, _resource_name, **kwargs):
+        """ Look up resource `_resource_name`, bind it and return the bound Resource.
 
-            `name` - name of resource
+            `_resource_name` - name of resource
             `**kwargs` - dict of attributes required to bind resource
         """
         if self.restschema is None:
             raise ServiceException("No rest-schema")
 
-        jsonschema = self.restschema.find_resource(name)
+        jsonschema = self.restschema.find_resource(_resource_name)
         schema = Schema(self, jsonschema)
         return schema.bind(**kwargs)
 
