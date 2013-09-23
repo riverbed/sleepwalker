@@ -7,7 +7,7 @@
 
 from reschema import RestSchema
 
-from .resource import Schema
+from .datarep import Schema
 from .connection import Connection
 from .exceptions import ServiceException, ResourceException, TypeException
 

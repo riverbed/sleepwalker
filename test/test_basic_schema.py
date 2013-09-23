@@ -10,164 +10,209 @@ import re
 import string
 import logging
 import unittest
-import urlparse
+import copy
 
 import uritemplate
 from reschema.jsonschema import Ref
-from requests.exceptions import HTTPError
 
 from sleepwalker.service import Service
-from sleepwalker.resource import Resource
-from sleepwalker.connection import Connection, URLError
+from sleepwalker.datarep import DataRep
+from sleepwalker.connection import Connection
+
+from sim_connection import SimConnection
 
 logger = logging.getLogger(__name__)
 
 TEST_PATH = os.path.abspath(os.path.dirname(__file__))
 
-
-class TestConnection(object):
-    """ Connection test class which echos 'example's back from a restschema.
-    """
+class BasicConnection(SimConnection):
 
     def __init__(self, test=None):
-        self.test = test
-        self.restschemas = []
+        SimConnection.__init__(self, test)
+        self.add_collection('items', 'item')
+        self.add_collection('categories', 'category')
+    
+        self._x = 5
 
-    def add_restschema(self, rs):
-        self.restschemas.append(rs)
+    def x_links_get(self, link, method, uri, data, params, headers):
+        return self._x
 
-    def json_request(self, method, uri, data, params, headers):
-        logger.info("%s %s params=%s, data=%s" % (method, uri, params, data))
-        for rs in self.restschemas:
-            m = re.match("^%s(.*)$" % rs.servicePath, uri)
-            if m:
-                break
+    def x_links_set(self, link, method, uri, data, params, headers):
+        self._x = data
+        return self._x
 
-        self.test and self.test.assertIsNotNone(m)
+    def x_links_action(self, link, method, uri, data, params, headers):
+        return 21
 
-        for r in rs.resources.values():
-            for link in r.links.values():
-                if ((link.method is None) or (method != link.method) or
-                    (link.path is None)):
-                    continue
-                template = link.path.template
-                vars = uritemplate.variables(template)
-                values = {}
-                for v in vars:
-                    values[v] = "__VAR__"
+    def x_links_action2(self, link, method, uri, data, params, headers):
+        return {'t1': 15, 't2': 'foo'}
 
-                uri_re = uritemplate.expand(template, values)
-                if uri_re[0] == '$':
-                    uri_re = "^" + rs.servicePath + uri_re[1:] + "$"
-                uri_re = string.replace(uri_re, "__VAR__", "(.*)")
-                logger.debug("matching %s against %s" % (uri, uri_re))
-                m = re.match(uri_re, uri)
-                if not m:
-                    continue
+    def items_links_get(self, link, method, uri, data, params, headers):
+        if params:
+            result = []
+            for (key,value) in self._collections['items'].iteritems():
+                for p,pv in params.iteritems():
+                    if p == 'category' and value['category'] != pv:
+                        continue
+                    if p == 'label' and value['label'] != pv:
+                        continue
+                    result.append(key)
+                
+            return result
+        else:
+            return self._collections['items'].keys()
 
-                if link.request is not None:
-                    r = link.request
-                    if type(r) is Ref:
-                        r = r.refschema
-                    r.validate(data)
-                    self.test and self.test.assertEqual(data, r.example)
-
-                if link.response is not None:
-                    if type(link.response) is Ref:
-                        return link.response.refschema.example
-                    return link.response.example
-
+    def categories_links_get(self, link, method, uri, data, params, headers):
+        if params:
+            result = []
+            for (key,value) in self._collections['categories'].iteritems():
+                for p,pv in params.iteritems():
+                    if p == 'label' and value['label'] != pv:
+                        continue
+                    result.append(key)
+                
+            return result
+        else:
+            return self._collections['categories'].keys()
 
 class BasicTest(unittest.TestCase):
 
     def setUp(self):
         self.service = Service()
         self.service.load_restschema(os.path.join(TEST_PATH, "basic_schema.yml"))
-        self.service.connection = TestConnection(self)
+        self.service.connection = BasicConnection(self)
         self.service.connection.add_restschema(self.service.restschema)
 
     def test_x(self):
         x = self.service.bind_resource('x')
-        self.assertEqual(type(x), Resource)
-        self.assertEqual(x.data, None)
+        self.assertEqual(type(x), DataRep)
 
-        resp = x.links.get()
-        self.assertEqual(resp, x)
-        self.assertEqual(x.data, 5)
+        x.data = 3
+        x.push()
+        self.assertEqual(x.data, 3)
+        
+        x.data = 0
+        x.pull()
+        self.assertEqual(x.data, 3)
 
-        resp = x.links.action(20)
+        resp = x.execute('get')
+        self.assertEqual(resp.data, 3)
+
+        resp = x.execute('set', 9)
+        self.assertEqual(resp.data, 9)
+        
+        resp = x.execute('action', 20)
         self.assertEqual(resp.data, 21)
 
-        resp = x.links.action2()
+        resp = x.execute('action2')
         self.assertEqual(resp.data, {'t1': 15, 't2': 'foo'})
 
-        x.data = 0
-        val = x.get()
-        self.assertEqual(val, 5)
 
     def test_item(self):
+        categories = self.service.bind_resource('categories')
+        cat_home = categories.create({'label': 'home'})
+        cat_garden = categories.create({'label': 'garden'})
+
+        items = self.service.bind_resource('items')
+        stapler = items.create({'label': 'stapler',
+                                'price': 10.99,
+                                'category' : cat_home.data['id']
+                                })
+        logger.debug("Create item %s: %s" % (stapler, stapler.data))
+        self.assertEqual(stapler.uri, '/api/basic/1.0/items/%d' % stapler.data['id'])
+
         item_schema = self.service.lookup_resource('item')
-        item = item_schema.bind(id=1)
+        logger.info("Binding item schema id=%d" % stapler.data['id'])
+        item = item_schema.bind(id=stapler.data['id'])
+        logger.debug("Bound item: %s" % item)
+        item.pull()
+        self.assertEqual(item.data, {'id': stapler.data['id'], 'label': 'stapler', 'price': 10.99, 'category': cat_home.data['id']})
 
-        resp = item.links.get()
-        self.assertEqual(item, resp)
-        logger.debug(item.data)
-        self.assertEqual(item.data, {'id': 1, 'label': 'foo'})
+        items.pull()
+        self.assertEqual(items.data, [1])
 
+        items = self.service.bind_resource('items')
+        ruler = items.create({'label': 'ruleer',
+                              'price': 3.99,
+                              'category' : cat_home.data['id']
+                              })
+        self.assertEqual(ruler.data, {'id': ruler.data['id'], 'label': 'ruleer', 'price': 3.99, 'category': cat_home.data['id']})
+        logger.debug("Create item %s: %s" % (ruler, ruler.data))
+        self.assertEqual(ruler.uri, '/api/basic/1.0/items/%d' % ruler.data['id'])
 
-HTTPBIN = os.environ.get('HTTPBIN_URL', 'http://httpbin.org/').rstrip('/') + '/'
-HTTPSBIN = os.environ.get('HTTPSBIN_URL', 'https://httpbin.org/').rstrip('/') + '/'
+        items.pull()
+        self.assertEqual(items.data, [1, 2])
 
+        item = item_schema.bind(id=2)
+        self.assertEqual(item.data, {'id': ruler.data['id'], 'label': 'ruleer', 'price': 3.99, 'category': cat_home.data['id']})
 
-def httpbin(*suffix):
-    """Returns url for HTTPBIN resource."""
-    return urlparse.urljoin(HTTPBIN, '/'.join(suffix))
+        self.assertEqual(ruler.data, {'id': ruler.data['id'], 'label': 'ruleer', 'price': 3.99, 'category': cat_home.data['id']})
+        item.data['label'] = 'ruler'
+        self.assertEqual(ruler.data, {'id': ruler.data['id'], 'label': 'ruleer', 'price': 3.99, 'category': cat_home.data['id']})
+        item.push()
 
+        item.pull()
+        self.assertEqual(item.data, {'id': ruler.data['id'], 'label': 'ruler', 'price': 3.99, 'category': cat_home.data['id']})
 
-class ConnectionTest(unittest.TestCase):
+        ruler.pull()
+        self.assertEqual(ruler.data, {'id': ruler.data['id'], 'label': 'ruler', 'price': 3.99, 'category': cat_home.data['id']})
 
-    def setUp(self):
-        pass
+        rake = items.create({'label': 'rake',
+                             'price': 24.99,
+                             'category' : cat_garden.data['id']
+                             })
+        shovel = items.create({'label': 'shovel',
+                               'price': 29.99,
+                               'category' : cat_garden.data['id']
+                               })
+        lawn_mower = items.create({'label': 'lawn mower',
+                                   'price': 129.99,
+                                   'category' : cat_garden.data['id']
+                                   })
 
-    def tearDown(self):
-        pass
+        items.pull()
+        self.assertEqual(len(items.data), 5)
 
-    def test_hostnames(self):
-        conn = Connection(HTTPBIN)
-        self.assertEqual(conn.hostname, HTTPBIN)
+        # Retreive all 'home' items via bind_resource()
+        home_items = self.service.bind_resource('items', category=cat_home.data['id'])
+        home_items.pull()
+        logger.debug("home_items: %s => %s" % (home_items, home_items.data))
+        self.assertEqual(len(home_items.data), 2)
+        for elem in home_items:
+            item = elem.follow('item')
+            self.assertEqual(elem.follow('item').data['category'], cat_home.data['id'])
 
-        conn = Connection(HTTPSBIN)
-        self.assertEqual(conn.hostname, HTTPSBIN)
+        # Retreive all 'garden' items via bind_resource()
+        garden_items = self.service.bind_resource('items', category=cat_garden.data['id'])
+        garden_items.pull()
+        logger.debug("garden_items: %s => %s" % (garden_items, garden_items.data))
+        self.assertEqual(len(garden_items.data), 3)
+        for elems in garden_items:
+            self.assertEqual(elems.follow('item').data['category'], cat_garden.data['id'])
 
-        conn = Connection('http://example.com')
-        self.assertEqual(conn.hostname, 'http://example.com')
+        # Retreive all 'home' items via category.links.items
+        home_items = cat_home.follow('items')
+        home_items.pull()
+        logger.debug("home_items: %s => %s" % (home_items, home_items.data))
+        self.assertEqual(len(home_items.data), 2)
+        for elems in home_items:
+            self.assertEqual(elems.follow('item').data['category'], cat_home.data['id'])
 
-        conn = Connection('https://example.com')
-        self.assertEqual(conn.hostname, 'https://example.com')
+        rulers= self.service.bind_resource('items', label='ruler')
+        ruler = rulers[0].follow('item')
+        self.assertEqual(ruler['label'].data, 'ruler')
+        ruler_label = ruler['label']
+        ruler_label.data = 'metric ruler'
+        ruler_label.push()
 
-        conn = Connection('https://example.com', port='20483')
-        self.assertEqual(conn.hostname, 'https://example.com:20483')
+        ruler.data = None
+        ruler.pull()
+        self.assertEqual(ruler.data['label'], 'metric ruler')
 
-    def test_missing_schema(self):
-        with self.assertRaises(URLError):
-            Connection('example.com', port=666)
-
-    def test_port_mismatch(self):
-        with self.assertRaises(URLError):
-            Connection('http://example.com:20483', port=666)
-
-    def test_json_request(self):
-        conn = Connection(HTTPBIN)
-        r = conn.json_request('GET', httpbin('get'))
-        self.assertEqual(r['headers']['Accept'], 'application/json')
-        self.assertEqual(r['headers']['Content-Type'], 'application/json')
-        self.assertEqual(conn.response.status_code, 200)
-
-    def test_404(self):
-        conn = Connection(HTTPBIN)
-        with self.assertRaises(HTTPError):
-            conn.json_request('GET', httpbin('get/notfound'))
-
+        ruler.delete()
+        rulers= self.service.bind_resource('items', label='ruler')
+        self.assertEqual(len(rulers.data), 0)
+        
 
 if __name__ == '__main__':
     logging.basicConfig(filename='test.log', level=logging.DEBUG)

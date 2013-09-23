@@ -7,6 +7,6 @@
 
 from .service import Service
 from .connection import Connection
-from .resource import Schema, Resource
+from .datarep import Schema, DataRep
 from .exceptions import (SleepwalkerException, ConnectionError, MissingRestSchema,
                          ResourceException, TypeException)

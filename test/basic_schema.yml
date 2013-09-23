@@ -6,7 +6,6 @@ servicePath: "/api/basic/1.0"
 types:
    t:
       type: object
-      example:  { t1: 15, t2: 'foo' }
       properties:
          t1: { type: number }
          t2: { type: string }
@@ -29,10 +28,8 @@ resources:
             method: POST
             request:
                type: number
-               example: 20
             response: 
                type: number
-               example: 21
             path: '$/x/action'
             
          action2: 
@@ -40,16 +37,102 @@ resources:
             response: { $ref: t }
             path: '$/x/action2'
 
+   items:
+      type: array
+      items: 
+         type: number
+         relations:
+            item:
+               resource: item
+               vars: { id: '0' }
+
+      links:
+         self:
+            path: '$/items'
+            request:
+               type: object
+               properties:
+                  category: { type: number }
+                  min_price: { type: number }
+                  max_price: { type: number }
+                  label: { type: string }
+
+         get:
+            method: GET
+            response: { $ref: items }
+
+         create:
+            method: POST
+            request: { $ref: item }
+            response: { $ref: item }
+
    item:
       type: object
       properties:
          id: { type: number }
          label: { type: string }
-
-      example:  { id: 1, label: foo}
+         price: { type: number }
+         category: { type: number }
 
       links:
-         self: { path: '$/item/{id}' }
+         self: { path: '$/items/{id}' }
          get:
             method: GET
             response: { $ref: item }
+
+         set:
+            method: PUT
+            request: { $ref: item }
+            response: { $ref: item }
+
+         delete:
+            method: DELETE
+
+   categories:
+      type: array
+      items: 
+         type: number
+         relations:
+            category:
+               resource: category
+               vars: { id: '0' }
+
+      links:
+         self:
+            path: '$/categories'
+            request:
+               type: object
+               properties:
+                  label: { type: string }
+         get:
+            method: GET
+            response: { $ref: categories }
+
+         create:
+            method: POST
+            request: { $ref: category }
+            response: { $ref: category }
+
+   category:
+      type: object
+      properties:
+         id: { type: number }
+         label: { type: string }
+
+      links:
+         self: { path: '$/categories/{id}' }
+         get:
+            method: GET
+            response: { $ref: category }
+
+         set:
+            method: PUT
+            request: { $ref: category }
+            response: { $ref: category }
+         
+         
+      relations:
+         items:
+            resource: items
+            vars: { category: '0/id' }
+

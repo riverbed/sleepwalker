@@ -43,8 +43,21 @@ class InvalidParameter(SleepwalkerException):
     """ URI template found an invalid parameter. """
 
 
+class RelationError(SleepwalkerException): 
+    """ Raised if invalid relation called on Resource. """
+
+
 class LinkError(SleepwalkerException): 
     """ Raised if invalid link called on Resource. """
+
+
+class DataPullError(SleepwalkerException): 
+    """ Raised if an attempt to pull data failed. """
+
+
+class NoDataError(SleepwalkerException): 
+    """ Raised if an attempt to push data when not set. """
+
 
 #
 # Connection related exceptions
