@@ -31,6 +31,7 @@ class CatalogConnection(SimConnection):
         SimConnection.__init__(self, test)
         self.add_collection('books', 'book')
         self.add_collection('authors', 'author')
+        self.add_collection('publishers', 'publisher')
 
     def books_links_get(self, link, method, uri, data, params, headers):
         result = []
@@ -44,6 +45,10 @@ class CatalogConnection(SimConnection):
             if add:
                 result.append({'id': v['id'], 'title': v['title']})
         return result
+
+    def book_links_purchase(self, link, method, uri, data, params, headers):
+        response = {'delivery_date' : 'Oct 1', 'final_cost': data['num_copies'] * 12.99}
+        return response
         
 class CatalogTest(unittest.TestCase):
     def setUp(self):

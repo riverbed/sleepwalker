@@ -5,6 +5,22 @@
 #   https://github.com/riverbed/flyscript-portal/blob/master/LICENSE ("License").
 # This software is distributed "AS IS" as set forth in the License.
 
+"""
+The `Service` class represents a single service supported by a server.
+A `rest-schema` is bound to the service in order to take advantage
+of the advanced features of `DataRep` instances to validate data,
+execute links and follow relations.
+
+Typical usage::
+
+   >>> catalog = Service()
+   >>> catalog.add_connection('restserver.com')
+   >>> catalog.load_restschema('examples/catalog.yml')
+   >>> book = catalog.bind('book', id=1)
+
+"""
+
+
 from reschema import RestSchema
 
 from .datarep import Schema

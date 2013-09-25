@@ -5,6 +5,234 @@
 #   https://github.com/riverbed/flyscript-portal/blob/master/LICENSE ("License").
 # This software is distributed "AS IS" as set forth in the License.
 
+"""
+Using :py:class:`DataRep` objects
+---------------------------------
+
+`DataRep` objects are the primary means of interacting with a 
+REST server.  Each instance is associated with a URI defining the
+address of the resource on the server, and optionally a json-schema
+that describes the structure of the data.
+
+There are a few ways to create `DataRep` instances:
+
+* Use `Service.bind()` method - this looks up a resource by name
+  in the rest-schema.
+
+* Call `follow()` or `execute()` from another `DataRep` instance
+
+* Create a new object via `create()` from a `DataRep` instance that
+  supports creation.
+
+Once created, a local copy of the data for this instance is retrieved
+from the server via `pull()` and a the server is updated via `push()`.
+
+A common read-modify-write cycle is shown below::
+
+   >>> catalog = Service()
+   >>> catalog.load_restschema('examples/Catalog.yml')
+   >>> book = catalog.bind('book', id=1)
+   >>> book
+   <DataRep /api/catalog/1.0/book' type book>
+
+   # Retrieve a copy of the data from server
+   >>> book.pull()
+
+   # Examine the data retrieved
+   >>> book.data
+   { 'id': 1, 'title': 'My first book', 'author_ids': [1, 9], 'publisher_id': 3 }
+
+   # Change the data
+   >>> book.data['title'] = 'My First Book - Using Python'
+
+   # Push the changes back to the server
+   >>> book.push()
+
+Links
+-----
+
+A schema may define one or more links the describe operations than can be
+performed relative to an instance.  Each link is associated with a specific
+HTTP method as described in the rest-schema.
+
+For standard CRUD style resources, a resource will define get/set/create/delete
+links.  Additional links that perform non-standard actions specific to that
+resource may also be defined.
+
+For example, consider the 'book' resource defined below::
+
+   books:
+      type: object
+      properties:
+         id: { type: number }
+         title: { type: string }
+         author_ids:
+            type: array
+            items: { type: number }
+         publisher_id: { type: number }
+
+      links:
+         purchase:
+            path: "$/books/{id}/purchase"
+            method: POST
+
+            request:
+               type: object
+               properties:
+                  num_copies: { type: number }
+                  shipping_address: { $ref: address }
+
+            response:
+               type: object
+               properties:
+                  delivery_date: { type: string }
+                  final_cost: { type: number }
+
+The `purchase` link describes how to purchase one or more copies of
+this book.  In order to purchase 100 copies of book id=1, the client
+must perform a POST to the server at the address
+'/api/catalog/1.0/books/1/purchase' with a body include the requested
+number of copies and shipping address.
+
+Using a `DataRep` instance for this book, this is accomplished via the
+`execute()` method::
+
+   >>> book = catalog.bind('book', id=1)
+   >>> request = {'num_copies': 100, 'shipping_address': '123 Street, Boston' }
+   >>> response = book.execute('purchase', request)
+   >>> response
+   <DataRep '/api/catalog/1.0/books/1/purchase' type:book.links.purchase.response>
+
+   >>> response.data
+   { 'delivery_date': 'Oct 1', 'final_cost': 129.90 }
+
+Calling `execute()` always returns a new `DataRep` instance representing the
+response.
+
+The list of links for a given `DataRep` is available by inspecting the
+`links` property::
+
+   >>> book.links.keys()
+   ['self', 'get', 'set', 'delete', 'purchase', 'new_chapter']
+
+Relations
+---------
+
+Relations provide the means to reach other resources that are related to
+this one.  Each relation is essentially a pointer from one resource
+to another.
+
+For example, the `book` resource above has a `publisher_id` data
+member.  This identifies the publisher associated with this book.  The
+schema defines a relation 'publisher' that provides the link to the
+full publisher resource::
+
+   book:
+      relations:
+         publisher: 
+            resource: publisher
+            vars:
+               id: '0/publisher_id'
+   
+This allows using the `follow()` method to get to a DataRep for the publisher::
+
+   >>> pub = book.follow('publisher')
+   >>> pub
+   <DataRep '/api/catalog/1.0/publishers/3' type:publisher>
+
+   >>> pub.data
+   {'id': 3,
+    'name': 'DigiPrinters',
+    'billing_address': {'city': 'Boston', 'street': '123 Street'}
+    }
+
+The `follow` method use the `vars` property in the relation definition to
+map the book.data['publisher_id'] value to the `id` variable in the
+publisher representation, which is used to build the full URI.
+
+Fragments
+---------
+
+In some cases, it may be necessary to follow links on data nested within
+a single resource.  Consider the `book` example from above::
+
+   >>> book
+   >>> book.data
+   { 'id': 1, 'title': 'My first book', 'author_ids': [1, 9], 'publisher_id': 3 }
+
+   >>> book.data['author_ids']
+   [1, 9]
+
+Just like following the `publisher` link based on `publisher_id`, it's possible
+to follow an `author` link to reach an author resource.  However, unlike
+publisher, there are multiple authors.
+
+The schema defines the `author` relation as follows::
+
+   book:
+      description: A book object
+      type: object
+      properties:
+         id: { type: number }
+         title: { type: string }
+         publisher_id: { type: number }
+         author_ids: 
+            type: array
+            items: 
+               id: author_id
+               type: number
+
+               relations:
+                  author:
+                     resource: author
+                     vars: { id: "0" }
+
+The `publisher` relation was defined at the top-level at
+`book.relations.publisher`.  The `author` relation is nested within
+the structure at `book.properties.author_ids.items.relations.author`.
+The best way to understand this is to look at the `type` at the same
+level as the `relations` keywork.  In this case `relations.author` is
+aligned with `type: number`.  This number is one author id in an
+array of authors associated with this book.  That means that
+the `author` relation must be invoked relative to an item in the
+book.author_ids array::
+
+   >>> first_author = book['author_ids'][0].follow('author')
+   >>> first_author
+   <DataRep '/api/catalog/1.0/authors/1' type:author>
+
+   >>> second_author = book['author_ids'][1].follow('author')
+   >>> second_author
+   <DataRep '/api/catalog/1.0/authors/9' type:author>
+
+Breaking down that first line further shows DataRep fragment instances
+created:
+
+   >>> book.relations.keys()
+   ['instances', 'publishers']
+   
+   >>> book_author_ids = book['author_ids']
+   >>> book_author_ids
+   <DataRep '/api/catalog/1.0/books/1#/author_ids' type:book.author_ids>
+
+   >>> book_author_ids.data
+   [1, 9]
+   
+   >>> book_author_ids_0 = book_author_ids[0]
+   <DataRep '/api/catalog/1.0/books/1#/author_ids/0' type:book.author_ids[author_id]>
+   
+   >>> book_author_ids_0.relations.keys()
+   ['author']
+
+   >>> first_author = book_author_ids_0.follow('author')
+
+Each time a `DataRep` instance is indexed using `[]`, a new DataRep
+fragment is created.  This fragment is still associated with the same
+URI because it is merely a piece of the data at that URI based
+on the JSON pointer following the hash mark '#'.
+
+"""
+
 import copy
 import logging
 import urlparse
@@ -25,12 +253,27 @@ VALIDATE_REQUEST = True
 VALIDATE_RESPONSE = False
 
 class Schema(object):
-    """ A Schema object manages access to the schema for a class of resource.
+    """ A Schema object represents the jsonschema for a resource or type.
 
     The Schema object is the generic form of a REST resource as defined by
     a json-schema.  If the json-schema includes a 'self' link, the bind()
     method may be used to instantiate concrete resources at fully defined
-    addresses.
+    addresses.  This class may also represent a `type` defined in
+    the rest-schema.
+
+    Typcially, a `Schema` instance is created via the `Service` class.
+    This allows inspection of the jsonschema as well as to bind and create
+    `DataRep` instances:
+
+       >>> book_schema = catalog.lookup_schema('book')
+       >>> book_schema
+       <Schema '/api/catalog/1.0/books/{id}' type:book>
+
+       >>> book_schema.jsonschema.validate({'id': 1})
+
+       >>> book1 = book_schema.bind(id=1)
+       >>> book1
+       <DataRep '/api/catalog/1.0/books/1' type:book>
 
     """
 
@@ -43,8 +286,11 @@ class Schema(object):
         s = 'Schema' 
         if 'self' in self.jsonschema.links:
             selflink = self.jsonschema.links['self']
-            s = s + ' "' + selflink.path.template + '"'
-        s = s + ' type ' + self.jsonschema.fullname()
+            uri = selflink.path.template
+            if uri[0] == '$':
+                uri = selflink.api + uri[1:]
+            s = s + " '" + uri + "'"
+        s = s + ' type:' + self.jsonschema.fullname()
         return '<' + s + '>'
         
     def bind(self, **kwargs):
@@ -52,13 +298,13 @@ class Schema(object):
 
         This method is used to instantiate concreate DataRep objects
         with fully qualified URIs based on the 'self' link associated
-        with the jsonschema for this object.  The **kwargs must match
+        with the jsonschema for this object.  The `**kwargs` must match
         the parameters defined in the self link, if any.
 
-        Example:
-        >>> book_schema = Schema(service, book_jsonschema)
+        Example::
 
-        >>> book1 = book_schema.bind(id=1)
+           >>> book_schema = Schema(catalog, book_jsonschema)
+           >>> book1 = book_schema.bind(id=1)
         
         """
         if 'self' not in self.jsonschema.links:
@@ -98,9 +344,9 @@ class _DataRepValue(object):
 class DataRep(object):
     """ A concrete representation of a resource at a fully defined address.
 
-    The DataRep object manages interaction with a REST resource at a
-    defined address.  If a jsonschema is attached, the jsonschema describes the
-    abstract resource definition via a jsonschema.
+    The DataRep object manages a data representation of a particular
+    REST resource at a defined address.  If a jsonschema is attached,
+    the jsonschema describes the structure of that data representation.
 
     """
 
@@ -109,7 +355,7 @@ class DataRep(object):
     
     def __init__(self, service, uri, fragment=None, parent=None,
                  jsonschema=None, data=UNSET, params=None):
-        """ Creata a new DataRep object at the address `uri`.
+        """ Creata a new DataRep object associated with the resource at `uri`.
 
         `fragment` is an optional JSON pointer creating a DataRep for
         a portion of the data at the given URI.
@@ -188,10 +434,10 @@ class DataRep(object):
             
         
     def __repr__(self):
-        s = 'DataRep "%s' % self.uri
+        s = "DataRep '%s" % self.uri
         if self.fragment:
             s += '#' + self.fragment
-        s += '"'
+        s += "'"
         if self.params is not None:
             s += " params:" + ','.join(["%s=%s" % (key, value) for (key,value) in self.params.iteritems()])
         if self.jsonschema:
@@ -200,15 +446,26 @@ class DataRep(object):
         
     @property
     def data(self):
-        """ Return the data associated for this resource.
+        """ Return the data associated with this resource.
 
-        Accessing the data property will cause a pull() if the data
-        has not been previously accessed.  If the last pull() resulted
-        in a failure, an exception will be raised.
+        This property serves as the client-side holder of the data
+        associated the resource at the given address.  Calling `pull()`
+        will refresh this propery with the latest data from the server.
+        Calling `push()` will update the server with this data.
+        
+        If data has not yet been retrieved from the server, the first
+        call to access this proprerty will result in a call to `pull()`
+        Subsequent accesses will not refresh the data automatically,
+        the client must manually invoke `pull()` as needed to refresh.
 
-        If this DataRep defines a fragment, the data returned will be
-        the result of following the fragment (as a JSON pointer) from
-        the full data representation as the full URI.
+        
+        If the last pull() resulted in a failure, an exception will be
+        raised.
+
+        If this DataRep instance defines a fragment, the data returned
+        will be the result of following the fragment (as a JSON
+        pointer) from the full data representation as the full URI.
+
         """
         if self._data is DataRep.FAIL:
             raise DataPullError("Last attept to pull failed")
@@ -229,6 +486,118 @@ class DataRep(object):
         else:
             self._data = value
         
+    def pull(self):
+        """ Retrieve a copy of the data representation for this resource from the server.
+
+        This relies on the schema 'get' link.  This will always
+        perform an interaction with the server to refresh the
+        representation as per the 'get' link.
+        
+        On success, the result is cached in `self.data` and `self` is returned.
+
+        """
+
+        if self.parent:
+            self.parent.pull()
+            return self
+        
+        if self._getlink is not True:
+            raise LinkError(self._getlink)
+
+        response = self.service.request('GET', self.uri, params=self.params)
+        self._data = response
+        return self
+
+
+    def push(self, obj=UNSET):
+        """ Modify the data representation for this resource from the server.
+
+        This relies on the schema 'set' link.  This will always
+        perform an interaction with the server to attempt an update
+        of the representation as per the 'set' link.
+
+        If `obj` is passed, `self.data` is modified.  This is true
+        even if the push to the server results in a failure.
+        
+        On success, the `self` is returned
+
+        Note that if this DataRep is associated with a fragment, the
+        full data representation will be pushed to the server.
+        
+        """
+        if self.parent:
+            if obj is not DataRep.UNSET:
+                # Set the data via the property, as this will
+                # leverage the fragment pointer to update the original
+                # data instance
+                self.data = obj
+            self.parent.push()
+            return self
+
+        if self._setlink is not True:
+            raise LinkError(self._setlink)
+
+        if self.params is not None:
+            raise LinkError("push not allowed, DataRep with parameters is readonly")
+            
+        if obj is not DataRep.UNSET:
+            self._data = obj
+
+        if (self._data is DataRep.UNSET or
+            self._data is DataRep.FAIL):
+            raise DataNotSetError("No data to push")
+
+        if VALIDATE_REQUEST:
+            self.jsonschema.validate(self._data)
+
+        response = self.service.request('PUT', self.uri, self._data)
+        self._data = response
+        
+        return self
+
+
+    def create(self, obj):
+        """ Create a new instance of a resource in a collection.
+
+        This relies on the 'create' link in the json-schema.
+
+        On success, this returns a new `DataRep` instance associated
+        with the newly created resource.
+
+        """
+
+        if self._createlink is not True:
+            raise LinkError(self._createlink)
+
+        link = self.links['create']
+        
+        if VALIDATE_REQUEST:
+            link.request.validate(obj)
+
+        response = self.service.request('POST', self.uri, obj)
+        logger.debug("create response: %s" % response)
+        uri = link.response.links['self'].path.resolve(response)
+
+        return DataRep(self.service, uri, jsonschema=link.response, data=response)
+    
+
+    def delete(self):
+        """ Issue a delete for this resource.
+
+        This relies on the 'delete' link.
+
+        On success, this unsets the data property and returns `self`.
+
+        """
+
+        if self._deletelink is not True:
+            raise LinkError(self._deletelink)
+
+        response = self.service.request('DELETE', self.uri)
+        self._data = DataRep.UNSET
+        return self
+
+
     def _resolve_path(self, path, **kwargs):
         """ Internal method to fill in path variables from data and kwargs. """
         # Need to make a copy of resource data, as we'll be adding kwargs
@@ -244,8 +613,14 @@ class DataRep(object):
 
         return path.resolve(variables)
 
-    def follow(self, name, data=None, **kwargs):
-        """ Follow a relation by name. """
+
+    def follow(self, name, **kwargs):
+        """ Follow a relation by name.
+
+        `name` is the name of the relation to follow, and must exist in
+        the jsonschema `relations`
+        
+        """
         if name not in self.relations:
             raise RelationError("%s has no relation '%s'" % (self, name))
 
@@ -256,7 +631,16 @@ class DataRep(object):
         return DataRep(self.service, uri, jsonschema=relation.resource, params=params)
 
     def execute(self, name, data=None, **kwargs):
-        """ Execute a link by name. """
+        """ Execute a link by name.
+
+        `name` is the link to follow and must exist in the jsonschema
+        `links`
+
+        `data` is used if the link defines a `request` object
+
+        `kwargs` define additional parameters that may be required
+        to fulfill the path 
+        """
         if name not in self.jsonschema.links:
             raise LinkError("%s has no link '%s'" % (self, name))
 
@@ -294,106 +678,6 @@ class DataRep(object):
         # Create a DataRep for the response
         return DataRep(self.service, uri, jsonschema=response_sch, data=response)
 
-
-    def pull(self):
-        """ Retrieve a copy of the data representation for this resource from the server.
-
-        This relies on the schema 'get' link.  This will always
-        perform an interaction with the server to refresh the
-        representation as per the 'get' link.
-        
-        On success, the result is cached in self.data and self is returned.
-
-        """
-
-        if self.parent:
-            self.parent.pull()
-            return self
-        
-        if self._getlink is not True:
-            raise LinkError(self._getlink)
-
-        response = self.service.request('GET', self.uri, params=self.params)
-        self._data = response
-        return self
-
-
-    def push(self, obj=UNSET):
-        """ Modify the data representation for this resource from the server.
-
-        This relies on the schema 'set' link.  This will always
-        perform an interaction with the server to attempt an update
-        of the representation as per the 'set' link.
-
-        If `obj` is passed, self.data is modified.
-        
-        On success, the self is returned
-
-        """
-        if self.parent:
-            if obj is not DataRep.UNSET:
-                self.data = obj
-            self.parent.push()
-            return self
-
-        if self._setlink is not True:
-            raise LinkError(self._setlink)
-
-        if self.params is not None:
-            raise LinkError("push not allowed, DataRep with parameters is readonly")
-            
-        if obj is not DataRep.UNSET:
-            self._data = obj
-
-        if (self._data is DataRep.UNSET or
-            self._data is DataRep.FAIL):
-            raise DataNotSetError("No data to push")
-
-        if VALIDATE_REQUEST:
-            self.jsonschema.validate(self._data)
-
-        response = self.service.request('PUT', self.uri, self._data)
-        self._data = response
-        
-        return self
-
-
-    def create(self, obj):
-        """ Create a new instance of a resource in a collection.
-
-        This relies on the 'create' link.
-
-        """
-
-        if self._createlink is not True:
-            raise LinkError(self._createlink)
-
-        link = self.links['create']
-        
-        if VALIDATE_REQUEST:
-            link.request.validate(obj)
-
-        response = self.service.request('POST', self.uri, obj)
-        logger.debug("create response: %s" % response)
-        uri = link.response.links['self'].path.resolve(response)
-
-        return DataRep(self.service, uri, jsonschema=link.response, data=response)
-    
-
-    def delete(self):
-        """ Issue a delete for this resource.
-
-        This relies on the 'delete' link.
-
-        """
-
-        if self._deletelink is not True:
-            raise LinkError(self._deletelink)
-
-        response = self.service.request('DELETE', self.uri)
-        self._data = DataRep.UNSET
-        return self
-
     
     def __getitem__(self, key):
         """ Index into the datarep based on the structure of the data representation.
@@ -402,23 +686,23 @@ class DataRep(object):
         nested links and data.
 
         Example:
-        >>> book = DataRep(...)
-        >>> book.links.get()
-        >>> book.data
-        { 'id': 101,
-          'title': 'My book',
-          'author_ids': [ 1, 2 ] }
-        >>> book['id'].data
-        101
-        >>> book['author_ids'].data
-        [ 1, 2]
-        >>> book['author_ids'][0].data
-        1
-        >>> author = book['author_ids'][0].links.author()
-        >>> author.get()
-        >>> author.data
-        { 'id' : 1,
-          'name' : 'John Doe' }
+           >>> book = DataRep(...)
+           >>> book.links.get()
+           >>> book.data
+           { 'id': 101,
+             'title': 'My book',
+             'author_ids': [ 1, 9 ] }
+           >>> book['id'].data
+           101
+           >>> book['author_ids'].data
+           [ 1, 9]
+           >>> book['author_ids'][0].data
+           1
+           >>> author = book['author_ids'][0].links.author()
+           >>> author.get()
+           >>> author.data
+           { 'id' : 1,
+             'name' : 'John Doe' }
 
         """
         js = self.jsonschema
