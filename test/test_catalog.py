@@ -53,11 +53,11 @@ class CatalogTest(unittest.TestCase):
         self.service.connection.add_restschema(self.service.restschema)
 
     def test_catalog(self):
-        authors = self.service.bind_resource('authors')
+        authors = self.service.bind('authors')
         harry = authors.create({'name': 'Harry'})
         fred = authors.create({'name': 'Fred'})
 
-        books = self.service.bind_resource('books')
+        books = self.service.bind('books')
         for i in range(3):
             books.create({'title': 'Harry - book %d' % i, 'author_ids': [harry.data['id']]})
 

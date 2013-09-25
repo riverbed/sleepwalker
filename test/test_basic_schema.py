@@ -84,7 +84,7 @@ class BasicTest(unittest.TestCase):
         self.service.connection.add_restschema(self.service.restschema)
 
     def test_x(self):
-        x = self.service.bind_resource('x')
+        x = self.service.bind('x')
         self.assertEqual(type(x), DataRep)
 
         x.data = 3
@@ -109,11 +109,11 @@ class BasicTest(unittest.TestCase):
 
 
     def test_item(self):
-        categories = self.service.bind_resource('categories')
+        categories = self.service.bind('categories')
         cat_home = categories.create({'label': 'home'})
         cat_garden = categories.create({'label': 'garden'})
 
-        items = self.service.bind_resource('items')
+        items = self.service.bind('items')
         stapler = items.create({'label': 'stapler',
                                 'price': 10.99,
                                 'category' : cat_home.data['id']
@@ -131,7 +131,7 @@ class BasicTest(unittest.TestCase):
         items.pull()
         self.assertEqual(items.data, [1])
 
-        items = self.service.bind_resource('items')
+        items = self.service.bind('items')
         ruler = items.create({'label': 'ruleer',
                               'price': 3.99,
                               'category' : cat_home.data['id']
@@ -173,8 +173,8 @@ class BasicTest(unittest.TestCase):
         items.pull()
         self.assertEqual(len(items.data), 5)
 
-        # Retreive all 'home' items via bind_resource()
-        home_items = self.service.bind_resource('items', category=cat_home.data['id'])
+        # Retreive all 'home' items via bind()
+        home_items = self.service.bind('items', category=cat_home.data['id'])
         home_items.pull()
         logger.debug("home_items: %s => %s" % (home_items, home_items.data))
         self.assertEqual(len(home_items.data), 2)
@@ -182,8 +182,8 @@ class BasicTest(unittest.TestCase):
             item = elem.follow('item')
             self.assertEqual(elem.follow('item').data['category'], cat_home.data['id'])
 
-        # Retreive all 'garden' items via bind_resource()
-        garden_items = self.service.bind_resource('items', category=cat_garden.data['id'])
+        # Retreive all 'garden' items via bind()
+        garden_items = self.service.bind('items', category=cat_garden.data['id'])
         garden_items.pull()
         logger.debug("garden_items: %s => %s" % (garden_items, garden_items.data))
         self.assertEqual(len(garden_items.data), 3)
@@ -198,7 +198,7 @@ class BasicTest(unittest.TestCase):
         for elems in home_items:
             self.assertEqual(elems.follow('item').data['category'], cat_home.data['id'])
 
-        rulers= self.service.bind_resource('items', label='ruler')
+        rulers= self.service.bind('items', label='ruler')
         ruler = rulers[0].follow('item')
         self.assertEqual(ruler['label'].data, 'ruler')
         ruler_label = ruler['label']
@@ -210,7 +210,7 @@ class BasicTest(unittest.TestCase):
         self.assertEqual(ruler.data['label'], 'metric ruler')
 
         ruler.delete()
-        rulers= self.service.bind_resource('items', label='ruler')
+        rulers= self.service.bind('items', label='ruler')
         self.assertEqual(len(rulers.data), 0)
         
 

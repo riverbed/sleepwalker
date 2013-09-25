@@ -53,8 +53,8 @@ class Service(object):
         self.restschema = RestSchema()
         self.restschema.load(filename)
 
-    def bind_resource(self, _resource_name, **kwargs):
-        """ Look up resource `_resource_name`, bind it and return the bound Resource.
+    def bind(self, _resource_name, **kwargs):
+        """ Look up resource `_resource_name`, bind it and return a DataRep.
 
             `_resource_name` - name of resource
             `**kwargs` - dict of attributes required to bind resource
@@ -79,14 +79,14 @@ class Service(object):
         return schema
 
     def lookup_resource(self, name):
-        """ Look up resource `name`, and return the schema
+        """ Look up `name` as a resource, and return a Schema
 
             `name` - name of resource
         """
         return self._lookup(name, self.restschema.find_resource, ResourceException)
 
     def lookup_type(self, name):
-        """ Look up type `name`, and return the schema
+        """ Look up type `name`, and return a Schema
 
             `name` - name of type
         """
