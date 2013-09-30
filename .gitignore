@@ -6,6 +6,7 @@ RELEASE-VERSION
 *.egg-info
 
 docs/html
+docs/_build
 *.html
 *.pdf
 
