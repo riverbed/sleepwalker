@@ -55,7 +55,7 @@ class DataPullError(SleepwalkerException):
     """ Raised if an attempt to pull data failed. """
 
 
-class NoDataError(SleepwalkerException): 
+class DataNotSetError(SleepwalkerException):
     """ Raised if an attempt to push data when not set. """
 
 

@@ -235,17 +235,13 @@ on the JSON pointer following the hash mark '#'.
 
 import copy
 import logging
-import urlparse
 import uritemplate
-from functools import partial
-
-from requests.sessions import merge_setting
-from requests.packages.urllib3.util import parse_url
 
 from jsonpointer import resolve_pointer, set_pointer, JsonPointer
 import reschema.jsonschema
 
-from .exceptions import MissingParameter, InvalidParameter, RelationError, DataPullError, LinkError
+from .exceptions import (MissingParameter, InvalidParameter, RelationError, DataPullError,
+                         LinkError, DataNotSetError)
 
 logger = logging.getLogger(__name__)
 
@@ -468,7 +464,7 @@ class DataRep(object):
 
         """
         if self._data is DataRep.FAIL:
-            raise DataPullError("Last attept to pull failed")
+            raise DataPullError("Last attempt to pull failed")
 
         if self._data is DataRep.UNSET:
             self.pull()
