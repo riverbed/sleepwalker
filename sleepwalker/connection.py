@@ -9,7 +9,6 @@ import json
 import urlparse
 
 import requests
-from requests.utils import prepend_scheme_if_needed
 from requests.packages.urllib3.util import parse_url
 from requests.structures import CaseInsensitiveDict
 
