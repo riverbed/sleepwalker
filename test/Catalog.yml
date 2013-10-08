@@ -223,9 +223,6 @@ resources:
                   delivery_date: { type: string }
                   final_cost: { type: number }
 
-         publisher:
-            path: "$/publisher/{publisher_id}"
-
          new_chapter:
             path: "$/books/{id}/chapter"
             method: POST
@@ -234,6 +231,9 @@ resources:
 
       relations:
          instances: { resource: books }
+         publisher: 
+            resource: publisher
+            vars: { id: "0/publisher_id" }
 
    book_chapter:
       type: object
@@ -265,3 +265,4 @@ resources:
             request: { type: string }
             response: { type: string }
             
+

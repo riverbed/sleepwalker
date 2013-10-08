@@ -33,7 +33,7 @@ A common read-modify-write cycle is shown below::
    >>> catalog.load_restschema('examples/Catalog.yml')
    >>> book = catalog.bind('book', id=1)
    >>> book
-   <DataRep /api/catalog/1.0/book' type book>
+   <DataRep '/api/catalog/1.0/book' type book>
 
    # Retrieve a copy of the data from server
    >>> book.pull()
@@ -61,7 +61,7 @@ resource may also be defined.
 
 For example, consider the 'book' resource defined below::
 
-   books:
+   book:
       type: object
       properties:
          id: { type: number }
@@ -395,7 +395,7 @@ class DataRep(object):
         if 'get' in self.links:
             l = self.links['get']
             resp = l.response
-            if (resp is not self.jsonschema):
+            if (not self.jsonschema.matches(resp)):
                 self._getlink = ("'get' link response does not match: %s vs %s" %
                                  (resp, self.jsonschema))
         else:
@@ -408,9 +408,9 @@ class DataRep(object):
             l = self.links['set']
             req = l.request
             resp = l.response
-            if not (req and req is self.jsonschema):
+            if not (req and self.jsonschema.matches(req)):
                 self._setlink = ("'set' link request does not match schema")
-            elif not (resp and resp is self.jsonschema):
+            elif not (resp and self.jsonschema.matches(resp)):
                 self._setlink = ("'set' link response does not match schema")
         else:
             self._setlink = "No 'set' link for this resource"
@@ -422,7 +422,7 @@ class DataRep(object):
             l = self.links['create']
             req = l.request
             resp = l.response
-            if (req is not resp):
+            if (not req.matches(resp)):
                 self._createlink = "'create' link request does not match the response"
         else:
             self._createlink = "No 'create' link for this resource"
