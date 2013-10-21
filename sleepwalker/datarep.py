@@ -647,7 +647,8 @@ class DataRep(object):
         response_sch = link.response
 
         if method is None:
-            raise LinkError("%s: Unable to follow link '%s', no method defined")
+            raise LinkError("%s: Unable to follow link '%s', no method defined" %
+                            (self, name))
 
         if VALIDATE_REQUEST and request_sch is not None:
             # Validate the request
@@ -716,7 +717,7 @@ class DataRep(object):
             if key < 0 or key >= len(self.data):
                 raise IndexError(key)
         else:
-            return KeyError(key)
+            raise KeyError(key)
 
         return DataRep(self.service, self.uri, fragment=(self.fragment or '') + '/' + str(key),
                        jsonschema=self.jsonschema[key], data=self._data, parent=self)
