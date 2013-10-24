@@ -49,13 +49,11 @@ resources:
       links:
          self:
             path: '$/items'
-            request:
-               type: object
-               properties:
-                  category: { type: number }
-                  min_price: { type: number }
-                  max_price: { type: number }
-                  label: { type: string }
+            params:
+               category: { type: number }
+               min_price: { type: number }
+               max_price: { type: number }
+               label: { type: string }
 
          get:
             method: GET
@@ -100,10 +98,8 @@ resources:
       links:
          self:
             path: '$/categories'
-            request:
-               type: object
-               properties:
-                  label: { type: string }
+            params:
+               label: { type: string }
          get:
             method: GET
             response: { $ref: categories }

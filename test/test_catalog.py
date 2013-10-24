@@ -73,9 +73,9 @@ class CatalogTest(unittest.TestCase):
             books.create({'title': 'Harry and Fred - book %d' % i, 'author_ids': [harry.data['id'], fred.data['id']]})
 
         books.pull()
-        firstbook = books[0].follow('book')
+        firstbook = books[0].follow('full')
         self.assertEqual(firstbook['author_ids'][0].data, harry.data['id'])
-        author = firstbook['author_ids'][0].follow('author')
+        author = firstbook['author_ids'][0].follow('full')
         self.assertEqual(author.data, harry.data)
 
         books.pull()

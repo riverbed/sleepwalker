@@ -73,7 +73,7 @@ For example, consider the 'book' resource defined below::
 
       links:
          purchase:
-            path: "$/books/{id}/purchase"
+            path: '$/books/{id}/purchase'
             method: POST
 
             request:
@@ -163,11 +163,11 @@ a single resource.  Consider the `book` example from above::
    >>> book.data['author_ids']
    [1, 9]
 
-Just like following the `publisher` link based on `publisher_id`, it's possible
-to follow an `author` link to reach an author resource.  However, unlike
-publisher, there are multiple authors.
+Just like following the `publisher` link based on `publisher_id`, it's
+possible to follow a link to reach an author resource.  However,
+unlike publisher, there are multiple authors.
 
-The schema defines the `author` relation as follows::
+The schema defines the `full` relation to reach an author as follows::
 
    book:
       description: A book object
@@ -183,25 +183,27 @@ The schema defines the `author` relation as follows::
                type: number
 
                relations:
-                  author:
+                  full:
                      resource: author
-                     vars: { id: "0" }
+                     vars: { id: '0' }
 
 The `publisher` relation was defined at the top-level at
-`book.relations.publisher`.  The `author` relation is nested within
-the structure at `book.properties.author_ids.items.relations.author`.
+`book.relations.publisher`.  The `full` relation is nested within
+the structure at `book.properties.author_ids.items.relations.full`.
 The best way to understand this is to look at the `type` at the same
-level as the `relations` keywork.  In this case `relations.author` is
+level as the `relations` keywork.  In this case `relations.full` is
 aligned with `type: number`.  This number is one author id in an
 array of authors associated with this book.  That means that
-the `author` relation must be invoked relative to an item in the
-book.author_ids array::
+the `full` relation must be invoked relative to an item in the
+book.author_ids array.  The `full` reference indicates that
+following this link will lead to a complete resource that is
+represented in part by the current data member (the id)::
 
-   >>> first_author = book['author_ids'][0].follow('author')
+   >>> first_author = book['author_ids'][0].follow('full')
    >>> first_author
    <DataRep '/api/catalog/1.0/authors/1' type:author>
 
-   >>> second_author = book['author_ids'][1].follow('author')
+   >>> second_author = book['author_ids'][1].follow('full')
    >>> second_author
    <DataRep '/api/catalog/1.0/authors/9' type:author>
 
@@ -222,9 +224,9 @@ created:
    <DataRep '/api/catalog/1.0/books/1#/author_ids/0' type:book.author_ids[author_id]>
    
    >>> book_author_ids_0.relations.keys()
-   ['author']
+   ['full']
 
-   >>> first_author = book_author_ids_0.follow('author')
+   >>> first_author = book_author_ids_0.follow('full')
 
 Each time a `DataRep` instance is indexed using `[]`, a new DataRep
 fragment is created.  This fragment is still associated with the same
@@ -317,7 +319,7 @@ class Schema(object):
 
         params = {}
         for var in kwargs:
-            if selflink.request and var in selflink.request.props:
+            if var in selflink._params:
                 params[var] = kwargs[var]
             elif var not in variables:
                 raise InvalidParameter('Invalid parameter "%s" for self template: %s' %
