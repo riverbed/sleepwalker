@@ -5,14 +5,34 @@
 #   https://github.com/riverbed/flyscript-portal/blob/master/LICENSE ("License").
 # This software is distributed "AS IS" as set forth in the License.
 
+import ssl
 import json
 import urlparse
 
 import requests
-from requests.packages.urllib3.util import parse_url
+import requests.exceptions
+from requests.adapters import HTTPAdapter
 from requests.structures import CaseInsensitiveDict
+from requests.packages.urllib3.util import parse_url
+from requests.packages.urllib3.poolmanager import PoolManager
 
 from .exceptions import ConnectionError, URLError
+
+
+class SSLAdapter(HTTPAdapter):
+    """ An HTTPS Transport Adapter that uses an arbitrary SSL version. """
+    # handle https connections that don't like to negotiate
+    # see https://lukasa.co.uk/2013/01/Choosing_SSL_Version_In_Requests/
+    def __init__(self, ssl_version=None, **kwargs):
+        self.ssl_version = ssl_version
+
+        super(SSLAdapter, self).__init__(**kwargs)
+
+    def init_poolmanager(self, connections, maxsize, block=False):
+        self.poolmanager = PoolManager(num_pools=connections,
+                                       maxsize=maxsize,
+                                       block=block,
+                                       ssl_version=self.ssl_version)
 
 
 class Connection(object):
@@ -50,6 +70,7 @@ class Connection(object):
                 hostname = hostname + ':' + str(port)
 
         self.hostname = hostname
+        self._ssladapter = False
 
         self.conn = requests.session()
         self.conn.auth = auth
@@ -68,7 +89,18 @@ class Connection(object):
         if not p.host:
             uri = self.get_url(uri)
 
-        r = self.conn.request(method, uri, data=body, params=params, headers=extra_headers)
+        try:
+            r = self.conn.request(method, uri, data=body, params=params, headers=extra_headers)
+        except (requests.exceptions.SSLError, requests.exceptions.ConnectionError):
+            if self._ssladapter:
+                # If we've already applied an adapter, this is another problem
+                raise
+
+            # Otherwise, mount adapter and retry the request
+            self.conn.mount('https://', SSLAdapter(ssl.PROTOCOL_TLSv1))
+            self._ssladapter = True
+            r = self.conn.request(method, uri, data=body, params=params, headers=extra_headers)
+
         self.response = r
 
         # check if good status response otherwise raise exception
