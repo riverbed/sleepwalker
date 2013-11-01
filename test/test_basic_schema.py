@@ -107,7 +107,17 @@ class BasicTest(unittest.TestCase):
         resp = x.execute('action2')
         self.assertEqual(resp.data, {'t1': 15, 't2': 'foo'})
 
+    def test_follow_relation(self):
+        categories = self.service.bind('categories')
+        new_category = categories.create({'label': 'foo'})
+        categories.pull()
+        category = categories['0'].follow('category')
+        # explicitly not calling category.pull() here!
+        #category.pull()
+        items = category.follow('items')
+        self.assertEqual(0, len(items.data))
 
+        
     def test_item(self):
         categories = self.service.bind('categories')
         cat_home = categories.create({'label': 'home'})

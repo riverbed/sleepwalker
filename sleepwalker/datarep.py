@@ -350,6 +350,7 @@ class DataRep(object):
 
     UNSET = _DataRepValue('UNSET')
     FAIL = _DataRepValue('FAIL')
+    DELETED = _DataRepValue('DELETED')
     
     def __init__(self, service, uri, fragment=None, parent=None,
                  jsonschema=None, data=UNSET, params=None):
@@ -441,7 +442,15 @@ class DataRep(object):
         if self.jsonschema:
             s = s + ' type:' + self.jsonschema.fullname()
         return '<' + s + '>'
-        
+
+    def data_valid(self):
+        """ Return True if the data property has a valid data representation. """
+        return not self._data in [self.UNSET, self.FAIL, self.DELETED]
+    
+    def data_unset(self):
+        """ Return True if the data property has not yet been set. """
+        return not self._data in [self.UNSET]
+    
     @property
     def data(self):
         """ Return the data associated with this resource.
@@ -467,6 +476,9 @@ class DataRep(object):
         """
         if self._data is DataRep.FAIL:
             raise DataPullError("Last attempt to pull failed")
+
+        if self._data is DataRep.DELETED:
+            raise DataPullError("Resource was deleted")
 
         if self._data is DataRep.UNSET:
             self.pull()
@@ -541,8 +553,7 @@ class DataRep(object):
         if obj is not DataRep.UNSET:
             self._data = obj
 
-        if (self._data is DataRep.UNSET or
-            self._data is DataRep.FAIL):
+        if (not self.data_valid()):
             raise DataNotSetError("No data to push")
 
         if VALIDATE_REQUEST:
@@ -584,7 +595,7 @@ class DataRep(object):
 
         This relies on the 'delete' link.
 
-        On success, this unsets the data property and returns `self`.
+        On success, this marks the data property as DELETED and returns `self`.
 
         """
 
@@ -592,7 +603,7 @@ class DataRep(object):
             raise LinkError(self._deletelink)
 
         response = self.service.request('DELETE', self.uri)
-        self._data = DataRep.UNSET
+        self._data = DataRep.DELETED
         return self
 
 
@@ -600,7 +611,8 @@ class DataRep(object):
         """ Internal method to fill in path variables from data and kwargs. """
         # Need to make a copy of resource data, as we'll be adding kwargs
         # to this list and then resolving the path
-        variables = copy.copy(self.data)
+        if self.data_valid() or self.data_unset():
+            variables = copy.copy(self.data)
 
         # XXXCJ - what if self.data is an int?  How to merge in kwargs?
         for key, value in kwargs.iteritems():
@@ -624,6 +636,11 @@ class DataRep(object):
 
         relation = self.relations[name]
 
+        # This checks causes a pull if data is unset
+        self.data
+        
+        # Have to use self._data here because we want the full data from the parent
+        # if this is a fragment, whereas self.data just returns the fragment
         (uri, params) = relation.resolve(self._data, self.fragment, params=kwargs)
                     
         return DataRep(self.service, uri, jsonschema=relation.resource, params=params)
