@@ -52,10 +52,9 @@ class Service(object):
     @property
     def response(self):
         """ Last response from server. """
-        try:
-            return self.connection.response
-        except:
+        if self.connection is None or self.connection.response is None:
             return None
+        return self.connection.response
 
     def fetch_restschema(self):
         """ Fetch the hosted rest-schema. """
@@ -99,7 +98,8 @@ class Service(object):
 
             `name` - name of resource
         """
-        return self._lookup(name, self.restschema.find_resource, ResourceException)
+        return self._lookup(name, self.restschema.find_resource,
+                            ResourceException)
 
     def lookup_type(self, name):
         """ Look up type `name`, and return a Schema
