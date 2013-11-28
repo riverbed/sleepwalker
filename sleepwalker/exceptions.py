@@ -58,6 +58,8 @@ class DataPullError(SleepwalkerException):
 class DataNotSetError(SleepwalkerException):
     """ Raised if an attempt to push data when not set. """
 
+class FragmentError(SleepwalkerException):
+    """ Raised if fragment settings are inconsistent. """
 
 #
 # Connection related exceptions

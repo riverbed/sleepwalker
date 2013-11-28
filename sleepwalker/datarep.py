@@ -242,8 +242,9 @@ import uritemplate
 from jsonpointer import resolve_pointer, set_pointer, JsonPointer
 import reschema.jsonschema
 
-from .exceptions import (MissingVar, InvalidParameter, RelationError, DataPullError,
-                         LinkError, DataNotSetError)
+from .exceptions import (MissingVar, InvalidParameter, RelationError,
+                         FragmentError,
+                         DataPullError, LinkError, DataNotSetError)
 
 logger = logging.getLogger(__name__)
 
@@ -358,9 +359,13 @@ class DataRep(object):
     FAIL = _DataRepValue('FAIL')
     DELETED = _DataRepValue('DELETED')
     
-    def __init__(self, service, uri, fragment=None, parent=None,
-                 jsonschema=None, data=UNSET, params=None):
+    def __init__(self, service, uri, jsonschema, fragment=None, parent=None,
+                 data=UNSET, params=None):
         """ Creata a new DataRep object associated with the resource at `uri`.
+
+        :param jsonschema: a jsonschema.Schema derivative that describes the
+            structure of the data at this uri.  If `fragment` is not null, the
+            `jsonschema` must represent the `fragment`, not the entire data.
 
         :param fragment: an optional JSON pointer creating a DataRep for
             a portion of the data at the given URI.
@@ -368,10 +373,6 @@ class DataRep(object):
         :param parent: must be set to the DataRep associated with the full
             data if `fragment` is set
         
-        :param jsonschema: a jsonschema.Schema derivative that describes the
-            structure of the data at this uri.  If `fragment` is not null, the
-            `jsonschema` must represent the `fragment`, not the entire data.
-
         :param data: optional, may be set to initialize the data value
             for this representation.  If `fragment` is also passed, `data` must
             be the complete data representation for the URI, and `fragment` a
@@ -387,8 +388,14 @@ class DataRep(object):
         self.service = service
         self.jsonschema = jsonschema
         self._data = data
+
         self.fragment = fragment
         self.parent = parent
+        if self.fragment and not self.parent:
+            raise FragmentError("Must supply parent with fragment")
+        elif self.parent and not self.fragment:
+            raise FragmentError("Must supply fragment with parent")
+
         self.params = None if params == {} else params
 
         self.relations = self.jsonschema.relations
