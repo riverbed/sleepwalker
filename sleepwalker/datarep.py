@@ -332,8 +332,8 @@ class Schema(object):
                   (var, selflink.path.template))
 
         uri = selflink.path.resolve(variables)
-        return DataRep(self.service, uri,
-                       jsonschema=self.jsonschema, params=params)
+        return DataRep.from_schema(self.service, uri,
+                                   jsonschema=self.jsonschema, params=params)
 
 
 class _DataRepValue(object):
@@ -359,7 +359,33 @@ class DataRep(object):
     FAIL = _DataRepValue('FAIL')
     DELETED = _DataRepValue('DELETED')
     FRAGMENT = _DataRepValue('FRAGMENT')
-    
+
+    @classmethod
+    def from_schema(cls, service=None, uri=None, jsonschema=None,
+                         root=None, fragment='', **kwargs):
+        """ Create the appropriate type of DataRep based on json-schema type
+
+        This factory method instantiates the right kind of DataRep depending
+        on whether the schema supplied has a type of "object" (dict), "array"
+        (list) or some other type.
+
+        Arguments are the same as for `DataRep.__init__`
+        """
+        if jsonschema is None and None in (root, fragment):
+            raise TypeError(
+              "Either jsonschema or root and fragment must be passed.")
+
+        js = jsonschema if jsonschema else root.jsonschema[fragment]
+
+        if isinstance(js, reschema.jsonschema.Object):
+            return DictDataRep(service, uri, jsonschema=jsonschema,
+                              root=root, fragment=fragment, **kwargs)
+        elif isinstance(js, reschema.jsonschema.Array):
+            return ListDataRep(service, uri, jsonschema=jsonschema,
+                               root=root, fragment=fragment, **kwargs)
+        return DataRep(service, uri, jsonschema=jsonschema,
+                       root=root, fragment=fragment, **kwargs)
+
     def __init__(self, service=None, uri=None, jsonschema=None,
                        fragment='', root=None,
                        data=UNSET, params=None):
@@ -660,8 +686,8 @@ class DataRep(object):
         logger.debug("create response: %s" % response)
         uri = link.response.links['self'].path.resolve(response)
 
-        return DataRep(self.service, uri, jsonschema=link.response,
-                       data=response)
+        return DataRep.from_schema(self.service, uri, jsonschema=link.response,
+                                   data=response)
     
 
     def delete(self):
@@ -748,8 +774,9 @@ class DataRep(object):
         (uri, params) = relation.resolve(fulldata, self.fragment,
                                          params=kwargs)
 
-        return DataRep(self.service, uri, jsonschema=relation.resource,
-                       params=params)
+        return DataRep.from_schema(self.service, uri,
+                                   jsonschema=relation.resource,
+                                   params=params)
 
     def execute(self, name, data=None, **kwargs):
         """ Execute a link by name.
@@ -799,19 +826,23 @@ class DataRep(object):
             response_sch.validate(response)
 
         # Create a DataRep for the response
-        return DataRep(self.service, uri, jsonschema=response_sch,
-                       data=response)
+        return DataRep.from_schema(self.service, uri, jsonschema=response_sch,
+                                   data=response)
 
-    
+class DictDataRep(DataRep):
+    """ A DataRep for an object resource
+
+    This class implements various dict operations to allow walking through
+    the resource and producing fragmentary DataReps appropriately.
+    """
     def __getitem__(self, key):
-        """ Index into the datarep based on the structure of the data representation.
+        """ Index into the datarep based on an object key.
 
         This method allows indexing into a single datarep to allow accessing
         nested links and data.
 
         Example:
-           >>> book = DataRep(...)
-           >>> book.links.get()
+           >>> book = DataRep.from_schema(...)
            >>> book.data
            { 'id': 101,
              'title': 'My book',
@@ -820,31 +851,61 @@ class DataRep(object):
            101
            >>> book['author_ids'].data
            [ 1, 9]
-           >>> book['author_ids'][0].data
+           >>> other_books = book['author_ids'].execute('other_books_by')
+           >>> other_books.data
+           { 'book_ids': [ 30, 42, 77] }
+
+        """
+        if key not in self.data:
+            raise KeyError(key)
+            
+        return DataRep.from_schema(fragment=self.fragment + '/' + str(key),
+                                   root=self.root if self.root else self)
+
+class ListDataRep(DataRep):
+
+    def __getitem__(self, key):
+        """ Index into the datarep based on an index or slice.
+
+        This method allows indexing and slicing into a single datarep
+        to allow accessing nested links and data.
+
+        Example (the author_ids DataRep may represent the '#/items' fragment
+        from a collection of authors):
+           >>> author_ids = DataRep.from_schema(...)
+           >>> author_ids.data
+           [ 1, 9]
+           >>> author_ids[0].data
            1
-           >>> author = book['author_ids'][0].links.author()
-           >>> author.get()
+           >>> author = author_ids[0].follow('full')
            >>> author.data
            { 'id' : 1,
              'name' : 'John Doe' }
 
         """
-        js = self.jsonschema
-        
-        if isinstance(js, reschema.jsonschema.Object):
-            if key not in self.data:
-                raise KeyError(key)
-            
-        elif isinstance(js, reschema.jsonschema.Array):
-            try:
-                key = int(key)
-            except:
-                raise KeyError(key)
+        if isinstance(key, slice):
+            # Despite the name, slice.indices() returns start, stop, stride
+            # rather than the literal indices, so we call range() on that.
+            indices = range(*key.indices(len(self.data)))
+            make_fragment = lambda i: self.fragment + '/' + str(i)
+            new_root = self.root if self.root else self
+            return [DataRep.from_schema(fragment=make_fragment(i),
+                                        root=new_root)
+                    for i in indices]
 
-            if key < 0 or key >= len(self.data):
-                raise IndexError(key)
-        else:
-            raise KeyError(key)
+        # If it wasn't a slice, it had better be an int.  The Python data
+        # model specifies that a TypeError should be thrown here, never
+        # a ValueError, so convert as needed.
+        try:
+            index = int(key)
+        except ValueError:
+            raise TypeError(key)
 
-        return DataRep(fragment=self.fragment + '/' + str(key),
-                       root=(self.root if self.root else self))
+        if index < 0 or index >= len(self.data):
+            raise IndexError(key)
+
+        ptr_index = index if index >= 0 else len(self.data) - index
+        return DataRep.from_schema(
+          fragment=self.fragment + '/' + str(ptr_index),
+          root=self.root if self.root else self)
+

@@ -42,6 +42,7 @@ ANY_FRAGMENT_PTR = '/a/2'
 ANY_FRAGMENT_SCHEMA_DICT = {'type': 'number'}
 ANY_FRAGMENT_SCHEMA = ANY_DATA_SCHEMA[ANY_FRAGMENT_PTR]
 ANY_FRAGMENT_SUBSCRIPT = lambda dr: dr['a'][2]
+ANY_FRAGMENT_SLICE = lambda dr: dr['a'][1:]
 
 ANY_CONTAINER_PATH = '/foos'
 ANY_CONTAINER_PARAMS_SCHEMA = {'filter': {'type': 'string'},
@@ -103,7 +104,7 @@ def test_schema_bind_params_no_vars(schema):
     self_link.path.resolve.return_value = ANY_CONTAINER_PATH
     self_link._params = ANY_CONTAINER_PARAMS_SCHEMA
 
-    with mock.patch('sleepwalker.datarep.DataRep') as patched:
+    with mock.patch('sleepwalker.datarep.DataRep.from_schema') as patched:
         schema.jsonschema.links = {'self': self_link}
         dr = schema.bind(**ANY_CONTAINER_PARAMS)
         assert dr is not None
@@ -121,7 +122,7 @@ def self_link():
     return self_link
 
 def test_schema_bind_params_and_vars(schema, self_link):
-    with mock.patch('sleepwalker.datarep.DataRep') as patched:
+    with mock.patch('sleepwalker.datarep.DataRep.from_schema') as patched:
         schema.jsonschema.links = {'self': self_link}
         kwargs = ANY_ITEM_PATH_VARS.copy()
         kwargs.update(ANY_ITEM_PARAMS)
@@ -132,7 +133,7 @@ def test_schema_bind_params_and_vars(schema, self_link):
                                         params=ANY_ITEM_PARAMS)
 
 def test_schema_bind_extra_kwargs(schema, self_link):
-    with mock.patch('sleepwalker.datarep.DataRep') as patched:
+    with mock.patch('sleepwalker.datarep.DataRep.from_schema') as patched:
         schema.jsonschema.links = {'self': self_link}
         kwargs = ANY_ITEM_PATH_VARS.copy()
         kwargs.update(ANY_ITEM_PARAMS)
@@ -430,14 +431,30 @@ def test_datarep_push_fragment(mock_service):
     assert not fragment.pull.called
 
 def test_datrep_getitem(mock_service):
-    root = datarep.DataRep(mock_service, ANY_URI, ANY_DATA_SCHEMA,
-                           data=ANY_DATA)
+    root = datarep.DataRep.from_schema(service=mock_service,
+                                       uri=ANY_URI,
+                                       jsonschema=ANY_DATA_SCHEMA,
+                                       data=ANY_DATA)
 
     fragment = ANY_FRAGMENT_SUBSCRIPT(root)
     assert fragment.jsonschema == root.jsonschema[ANY_FRAGMENT_PTR]
     assert fragment._data is datarep.DataRep.FRAGMENT
     assert fragment.data == resolve_pointer(root.data, ANY_FRAGMENT_PTR)
     assert fragment.root == root
+
+def test_datrep_getitem_slice(mock_service):
+    root = datarep.DataRep.from_schema(service=mock_service,
+                                       uri=ANY_URI,
+                                       jsonschema=ANY_DATA_SCHEMA,
+                                       data=ANY_DATA)
+
+    fragments = root['a'][1:]
+    assert len(fragments) == 2
+    for fragment, ptr in zip(fragments, ('/a/1', '/a/2')):
+        assert fragment.jsonschema == root.jsonschema[ptr]
+        assert fragment._data == datarep.DataRep.FRAGMENT
+        assert fragment.data == resolve_pointer(root.data, ptr)
+        assert fragment.root == root
 
 @pytest.mark.xfail
 def test_datarep_with_params_data_setter(mock_service, mock_jsonschema):
