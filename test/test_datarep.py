@@ -7,6 +7,7 @@
 
 import re
 from collections import OrderedDict
+import copy
 import json
 
 import mock
@@ -22,7 +23,25 @@ from sleepwalker.exceptions import (LinkError, InvalidParameter,
 
 ANY_URI = 'http://hostname.nbttech.com'
 ANY_DATA = {'x': 'y', 'a': [1, 2, 3]}
+ANY_DATA_SCHEMA_DICT = {
+    'type': 'object',
+    'properties': {
+        'x': {'type': 'string'},
+        'a': {'type': 'array', 'items': {'type': 'number'}}
+    }
+}
+# jsonschema.Schema instances are too much effort to mock.
+ANY_DATA_SCHEMA = reschema.jsonschema.Schema.parse(input=ANY_DATA_SCHEMA_DICT,
+                                                   name='any',
+                                                   api='/api/1.0/test')
+
+# It is important that this be more than one level deep due to bugs involving
+# whether the parent is set properly after the first level, but otherwise the
+# exact location of the fragment in the data is irrelevant.
 ANY_FRAGMENT_PTR = '/a/2'
+ANY_FRAGMENT_SCHEMA_DICT = {'type': 'number'}
+ANY_FRAGMENT_SCHEMA = ANY_DATA_SCHEMA[ANY_FRAGMENT_PTR]
+ANY_FRAGMENT_SUBSCRIPT = lambda dr: dr['a'][2]
 
 ANY_CONTAINER_PATH = '/foos'
 ANY_CONTAINER_PARAMS_SCHEMA = {'filter': {'type': 'string'},
@@ -41,7 +60,10 @@ def mock_service():
 
 @pytest.fixture
 def mock_jsonschema():
-    js = mock.Mock(reschema.jsonschema.Schema)()
+    js = mock.MagicMock(reschema.jsonschema.Object)()
+
+    # We need to pass isinstance tests.
+    js.__class__ = reschema.jsonschema.Object
 
     # The links member almost always needs to exist and an iterable,
     # so set it to an empty object of the correct type by default.
@@ -176,6 +198,14 @@ def test_datarep_instantiation_parent_no_fragment(mock_service, mock_jsonschema,
         dr = datarep.DataRep(mock_service, ANY_URI, jsonschema=mock_jsonschema,
                              parent=any_datarep)
 
+@pytest.mark.xfail
+def test_datarep_instantiation_fragment_service_mismatch(mock_service):
+    parent = datarep.DataRep(mock_service, ANY_URI, ANY_DATA_SCHEMA,
+                             data=ANY_DATA)
+    another_service = mock.Mock()
+    with pytest.raises(FragmentError):
+        datarep.DataRep(another_service, ANY_URI, ANY_DATA_SCHEMA)
+
 def test_datarep_instantiation_empty_params(mock_service, mock_jsonschema):
     dr = datarep.DataRep(mock_service, ANY_URI, jsonschema=mock_jsonschema,
                          params={})
@@ -254,6 +284,8 @@ def test_datarep_with_delete(mock_service, mock_jsonschema):
     helper_check_links(dr, present=['_deletelink'],
                            absent=['_getlink', '_setlink', '_createlink'])
 
+# ================= data, push, pull ========================================
+
 def test_datarep_data_getter_first_access(any_datarep):
     def side_effect():
         any_datarep._data = ANY_DATA
@@ -269,4 +301,79 @@ def test_datarep_data_getter_first_access_fragment(any_datarep_fragment):
     d = any_datarep_fragment.data
     any_datarep_fragment.pull.assert_called_once_with()
     assert d == resolve_pointer(ANY_DATA, ANY_FRAGMENT_PTR)
+
+def test_datarep_data_setter(any_datarep):
+    any_datarep.pull = mock.Mock()
+    any_datarep.data = ANY_DATA
+    assert not any_datarep.pull.called
+    assert any_datarep._data == ANY_DATA
+
+@pytest.mark.xfail
+def test_datarep_data_setter_fragment(mock_service):
+    parent_data = copy.deepcopy(ANY_DATA)
+    fragment_data = copy.deepcopy(ANY_DATA)
+    parent = datarep.DataRep(mock_service, ANY_URI, ANY_DATA_SCHEMA,
+                             data=parent_data)
+    fragment = datarep.DataRep(mock_service, ANY_URI, ANY_FRAGMENT_SCHEMA,
+                               parent=parent, fragment=ANY_FRAGMENT_PTR,
+                               data=fragment_data)
+    modified_data = set_pointer(ANY_DATA, ANY_FRAGMENT_PTR, 42, inplace=False)
+    parent.pull = mock.Mock()
+    fragment.pull = mock.Mock()
+
+    fragment.data = 42
+
+    assert fragment._data == modified_data
+    assert fragment.data == 42
+    assert parent.data == modified_data
+
+    assert not parent.pull.called
+    assert not fragment.pull.called
+
+@pytest.mark.xfail
+def test_datarep_push_fragment(mock_service):
+    parent_data = copy.deepcopy(ANY_DATA)
+    fragment_data = copy.deepcopy(ANY_DATA)
+    parent = datarep.DataRep(mock_service, ANY_URI, ANY_DATA_SCHEMA,
+                             data=parent_data)
+    fragment = datarep.DataRep(mock_service, ANY_URI, ANY_FRAGMENT_SCHEMA,
+                               parent=parent, fragment=ANY_FRAGMENT_PTR,
+                               data=fragment_data)
+    modified_data = set_pointer(ANY_DATA, ANY_FRAGMENT_PTR, 42, inplace=False)
+    parent.push = mock.Mock()
+    parent.pull = mock.Mock()
+    fragment.pull = mock.Mock()
+
+    retval = fragment.push(42)
+
+    assert fragment._data == modified_data
+    assert fragment.data == 42
+    assert parent.data == modified_data
+
+    assert retval is fragment
+    parent.push.assert_called_once_with()
+    assert not parent.pull.called
+    assert not fragment.pull.called
+
+@pytest.mark.xfail
+def test_datrep_getitem(mock_service):
+    parent = datarep.DataRep(mock_service, ANY_URI, ANY_DATA_SCHEMA,
+                             data=ANY_DATA)
+
+    fragment = ANY_FRAGMENT_SUBSCRIPT(parent)
+    assert fragment.jsonschema == parent.jsonschema[ANY_FRAGMENT_PTR]
+    assert fragment._data == parent._data
+    assert fragment.data == resolve_pointer(parent.data, ANY_FRAGMENT_PTR)
+    assert fragment.parent == parent
+
+@pytest.mark.xfail
+def test_datarep_with_params_data_setter(mock_service, mock_jsonschema):
+    dr = datarep.DataRep(mock_service, ANY_URI, mock_jsonschema,
+                         params={'foo': 'bar'})
+
+    # Parametrized DataReps are read-only.
+    # TODO: Is TypeError right?  A read-only dict would raise this, but
+    #       sometimes the DataRep type supports writing.
+    with pytest.raises(TypeError):
+        datarep.data = {'somevalue': 'doesntmatter'}
 

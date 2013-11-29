@@ -462,7 +462,7 @@ class DataRep(object):
 
     def data_valid(self):
         """ Return True if the data property has a valid data representation. """
-        return not self._data in [self.UNSET, self.FAIL, self.DELETED]
+        return self._data not in [self.UNSET, self.FAIL, self.DELETED]
     
     def data_unset(self):
         """ Return True if the data property has not yet been set. """
