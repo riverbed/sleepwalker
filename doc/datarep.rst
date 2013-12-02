@@ -7,7 +7,7 @@
 
 
 class :py:class:`DataRep`
----------------
+-------------------------
 
 .. autoclass:: DataRep
    :members:
@@ -15,7 +15,7 @@ class :py:class:`DataRep`
    .. automethod:: __init__
 
 class :py:class:`Schema`
----------------
+------------------------
 
 .. autoclass:: Schema
    :members:

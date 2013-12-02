@@ -242,7 +242,7 @@ import uritemplate
 from jsonpointer import resolve_pointer, set_pointer, JsonPointer
 import reschema.jsonschema
 
-from .exceptions import (MissingParameter, InvalidParameter, RelationError, DataPullError,
+from .exceptions import (MissingVar, InvalidParameter, RelationError, DataPullError,
                          LinkError, DataNotSetError)
 
 logger = logging.getLogger(__name__)
@@ -315,9 +315,8 @@ class Schema(object):
         variables = {}
         for var in uritemplate.variables(selflink.path.template):
             if var not in kwargs:
-                # TODO: Shouldn't this be MissingVar?  Parameters are different.
-                raise MissingParameter(
-                  'No value provided for parameter "%s" in self template: %s' %
+                raise MissingVar(
+                  'No value provided for variable "%s" in self template: %s' %
                   (var, selflink.path.template))
 
             variables[var] = kwargs[var]
@@ -364,23 +363,23 @@ class DataRep(object):
         """ Creata a new DataRep object associated with the resource at `uri`.
 
         :param fragment: an optional JSON pointer creating a DataRep for
-        a portion of the data at the given URI.
+            a portion of the data at the given URI.
 
         :param parent: must be set to the DataRep associated with the full
-        data if `fragment` is set
+            data if `fragment` is set
         
         :param jsonschema: a jsonschema.Schema derivative that describes the
-        structure of the data at this uri.  If `fragment` is not null, the
-        `jsonschema` must represent the `fragment`, not the entire data.
+            structure of the data at this uri.  If `fragment` is not null, the
+            `jsonschema` must represent the `fragment`, not the entire data.
 
         :param data: optional, may be set to initialize the data value
-        for this representation.  If `fragment` is also passed, `data` must
-        be the complete data representation for the URI, and `fragment` a
-        valid JSON pointer indexing into that data.
+            for this representation.  If `fragment` is also passed, `data` must
+            be the complete data representation for the URI, and `fragment` a
+            valid JSON pointer indexing into that data.
 
         :param params: is optional and defines additional parameters to use
-        when retrieving the data represetnation from the server.  If
-        specified, this instance shall be read-only.
+            when retrieving the data represetnation from the server.  If
+            specified, this instance shall be read-only.
 
         """
         

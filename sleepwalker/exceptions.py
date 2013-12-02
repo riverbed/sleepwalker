@@ -35,8 +35,8 @@ class TypeException(ServiceException):
 #
 # Schema and operational exceptions
 #
-class MissingParameter(SleepwalkerException):
-    """ URI template missing one or more parameters. """
+class MissingVar(SleepwalkerException):
+    """ URI template missing one or more variables. """
 
 
 class InvalidParameter(SleepwalkerException): 

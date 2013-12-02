@@ -13,7 +13,7 @@ import pytest
 
 import reschema.jsonschema
 from sleepwalker import service, datarep
-from sleepwalker.exceptions import LinkError, InvalidParameter, MissingParameter
+from sleepwalker.exceptions import LinkError, InvalidParameter, MissingVar
 
 ANY_URI = 'http://hostname.nbttech.com'
 
@@ -103,7 +103,7 @@ def test_schema_bind_extra_kwargs(schema, self_link):
 def test_schema_bind_missing_var(schema, self_link):
     with mock.patch('sleepwalker.datarep.DataRep') as patched:
         schema.jsonschema.links = {'self': self_link}
-        with pytest.raises(MissingParameter):
+        with pytest.raises(MissingVar):
             schema.bind(thisiswrong='whatever')
 
     self_link = mock.Mock(reschema.jsonschema.Link)()
