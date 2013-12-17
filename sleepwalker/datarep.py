@@ -394,13 +394,10 @@ class DataRep(object):
             when retrieving the data represetnation from the server.  If
             specified, this instance shall be read-only.
         """
-        # TODO: Should we allow fragment to take data and just assign it
-        #       to the data *property* rather than _data?
         
         self.uri = uri
         self.service = service
         self.jsonschema = jsonschema
-        self._data = data
         self.params = None if params == {} else params
 
         self.fragment = fragment
@@ -425,6 +422,9 @@ class DataRep(object):
         elif not (service and uri and jsonschema):
             raise TypeError(
               "service, uri and jsonschema are required parameters")
+        else:
+            # This is a root resource, and therefore owns the data directly.
+            self._data = data
 
         self.relations = self.jsonschema.relations
         self.links = self.jsonschema.links
@@ -432,7 +432,9 @@ class DataRep(object):
         # Check if the 'get' link is supported and the link response
         # matches the jsonschema
         self._getlink = True
-        if 'get' in self.links:
+        if self.fragment:
+            self._getlink = self.root._getlink
+        elif 'get' in self.links:
             l = self.links['get']
             resp = l.response
             if (not self.jsonschema.matches(resp)):
@@ -445,7 +447,9 @@ class DataRep(object):
         # Check if the 'set' link is supported and the link request and
         # response match the jsonschema
         self._setlink = True
-        if 'set' in self.links:
+        if self.fragment:
+            self._setlink = self.root._setlink
+        elif 'set' in self.links:
             l = self.links['set']
             req = l.request
             resp = l.response
@@ -459,7 +463,9 @@ class DataRep(object):
         # Check if the 'create' link is supported and the link request and
         # response match the jsonschema
         self._createlink = True
-        if 'create' in self.links:
+        if self.fragment:
+            self._createlink = self.root._createlink
+        elif 'create' in self.links:
             l = self.links['create']
             req = l.request
             resp = l.response
@@ -471,7 +477,9 @@ class DataRep(object):
             
         # Check if the 'delete' link is supported
         self._deletelink = True
-        if 'delete' not in self.links:
+        if self.fragment:
+            self._deletelink = self.root._deletelink
+        elif 'delete' not in self.links:
             self._deletelink = "No 'delete' link for this resource"
             
         
@@ -545,6 +553,8 @@ class DataRep(object):
         setting a fragment requires accessing the fragment's root.data.
         """
         if self.fragment:
+            # Access .root.data rather than ._data to ensure that
+            # we have pulled it at least once.
             set_pointer(self.root.data, self.fragment, value)
         else:
             self._data = value
@@ -582,11 +592,20 @@ class DataRep(object):
         If `obj` is passed, `self.data` is modified.  This is true
         even if the push to the server results in a failure.
         
-        On success, the `self` is returned
-
         Note that if this DataRep is associated with a fragment, the
-        full data representation will be pushed to the server.
+        full data representation will be pulled if necessary,
+        and the full modified data will then be pushed to the server.
         
+        :return: self
+
+        :raises DataNotSetError: if no data exists or has been supplied
+            to push to the server.
+        :raises DataPullError: if the data needed to be pulled in order
+            to be modified and pushed, but the pull failed.
+        :raises LinkError: if no set link is present to which to push,
+            or if this is a parameterized resource, which cannot be pushed.
+        :raises ValidationError: if validation was requested and the
+            value to be pushed fails validation.
         """
         if self.fragment:
             if obj is not DataRep.UNSET:
@@ -673,12 +692,30 @@ class DataRep(object):
 
     def _resolve_path(self, path, **kwargs):
         """ Internal method to fill in path variables from data and kwargs. """
-        # Need to make a copy of resource data, as we'll be adding kwargs
-        # to this list and then resolving the path
-        if self.data_valid() or self.data_unset():
+
+        # It is valid to resolve a link against a resource that is not
+        # get-able, so simply treat this as if there is no data to copy
+        # and initialize variables to an empty dict for convenience.
+        #
+        # TODO: Even if we have a get link, we may not need to pull the
+        #       data in order to resolve the path, in which case we should not.
+        if self._getlink is True:
+            # Need to make a copy of resource data, as we'll be adding kwargs
+            # to this list and then resolving the path
             variables = copy.copy(self.data)
+        else:
+            variables = {}
 
         # XXXCJ - what if self.data is an int?  How to merge in kwargs?
+        # This can be valid due to the "vars" json-pointer.  For now,
+        # only use data if it is a dict as both this code and the previous
+        # version would produce a TypeError otherwise.  See bug 155184.
+        #
+        # If there are no kwargs, this will work fine.  If we have
+        # a non-dict and kwargs, raise a clear error.
+        if kwargs and not isinstance(variables, dict):
+            raise NotImplementedError(
+                "Resolving links on non-object data not yet implemented.")
         for key, value in kwargs.iteritems():
             variables[key] = value
 
@@ -701,8 +738,14 @@ class DataRep(object):
         relation = self.relations[name]
 
         # The .data access checks and causes a pull if data is unset
-        full_data = self.root.data if self.fragment else self.data
-        (uri, params) = relation.resolve(full_data, self.fragment,
+        # But only do this if we have a get link.
+        # TODO: Even if we have a get link, it still may not be necessary
+        #       to pull in order to resolve the relation.
+        if self._getlink is True:
+            fulldata = self.root.data if self.fragment else self.data
+        else:
+            fulldata = None
+        (uri, params) = relation.resolve(fulldata, self.fragment,
                                          params=kwargs)
 
         return DataRep(self.service, uri, jsonschema=relation.resource,

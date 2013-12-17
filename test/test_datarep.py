@@ -79,8 +79,8 @@ def schema(mock_service, mock_jsonschema):
     return datarep.Schema(mock_service, mock_jsonschema)
     
 @pytest.fixture
-def any_datarep(mock_service, mock_jsonschema):
-    return datarep.DataRep(mock_service, ANY_URI, jsonschema=mock_jsonschema)
+def any_datarep(mock_service):
+    return datarep.DataRep(mock_service, ANY_URI, jsonschema=ANY_DATA_SCHEMA)
 
 @pytest.fixture
 def any_datarep_fragment(mock_service, mock_jsonschema, any_datarep):
@@ -400,7 +400,7 @@ def test_datarep_data_setter_fragment(mock_service):
 
     fragment.data = 42
 
-    assert fragment._data == datarep.DataRep.FRAGMENT
+    assert fragment._data is datarep.DataRep.FRAGMENT
     assert fragment.data == 42
     assert root.data == modified_data
 
@@ -420,7 +420,7 @@ def test_datarep_push_fragment(mock_service):
 
     retval = fragment.push(42)
 
-    assert fragment._data == datarep.DataRep.FRAGMENT
+    assert fragment._data is datarep.DataRep.FRAGMENT
     assert fragment.data == 42
     assert root.data == modified_data
 
@@ -435,7 +435,7 @@ def test_datrep_getitem(mock_service):
 
     fragment = ANY_FRAGMENT_SUBSCRIPT(root)
     assert fragment.jsonschema == root.jsonschema[ANY_FRAGMENT_PTR]
-    assert fragment._data == datarep.DataRep.FRAGMENT
+    assert fragment._data is datarep.DataRep.FRAGMENT
     assert fragment.data == resolve_pointer(root.data, ANY_FRAGMENT_PTR)
     assert fragment.root == root
 
