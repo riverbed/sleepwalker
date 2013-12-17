@@ -309,6 +309,57 @@ def test_datarep_with_delete(mock_service, mock_jsonschema):
     helper_check_links(dr, present=['_deletelink'],
                            absent=['_getlink', '_setlink', '_createlink'])
 
+# ================= valid/invalid ========================================
+
+def test_datarep_valid(any_datarep):
+    any_datarep._data = ANY_DATA
+    assert any_datarep.data_valid()
+    assert not any_datarep.data_unset()
+
+def test_datarep_not_valid_undef(any_datarep):
+    # This covers the undefined data case:
+    assert not any_datarep.data_valid()
+    assert any_datarep.data_unset()
+
+def test_datarep_not_valid_fail(any_datarep):
+    any_datarep._data = datarep.DataRep.FAIL
+    assert not any_datarep.data_valid()
+    assert not any_datarep.data_unset()
+    with pytest.raises(DataPullError):
+        any_datarep.data
+
+def test_datarep_not_valid_deleted(any_datarep):
+    any_datarep._data = datarep.DataRep.DELETED
+    assert not any_datarep.data_valid()
+    assert not any_datarep.data_unset()
+    with pytest.raises(DataPullError):
+        any_datarep.data
+
+def test_datarep_fragment_valid(any_datarep_fragment):
+    any_datarep_fragment.root._data = ANY_DATA
+    assert any_datarep_fragment.data_valid()
+    assert not any_datarep_fragment.data_unset()
+
+def test_datarep_fragment_not_valid_undef(any_datarep_fragment):
+    # This covers the undefined data case:
+    assert not any_datarep_fragment.data_valid()
+    assert any_datarep_fragment.data_unset()
+
+def test_datarep_fragment_not_valid_fail(any_datarep_fragment):
+    any_datarep_fragment.root._data = datarep.DataRep.FAIL
+    assert not any_datarep_fragment.data_valid()
+    assert not any_datarep_fragment.data_unset()
+    with pytest.raises(DataPullError):
+        any_datarep_fragment.data
+
+def test_datarep_fragment_not_valid_deleted(any_datarep_fragment):
+    # print any_datarep_fragment.jsonschema.fullname()
+    any_datarep_fragment.root._data = datarep.DataRep.DELETED
+    assert not any_datarep_fragment.data_valid()
+    assert not any_datarep_fragment.data_unset()
+    with pytest.raises(DataPullError):
+        any_datarep_fragment.data
+
 # ================= data, push, pull ========================================
 
 def test_datarep_data_getter_first_access(any_datarep):

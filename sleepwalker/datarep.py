@@ -490,11 +490,13 @@ class DataRep(object):
 
     def data_valid(self):
         """ Return True if the data property has a valid data representation. """
-        return self._data not in [self.UNSET, self.FAIL, self.DELETED]
+        fulldata = self.root._data if self.fragment else self._data
+        return fulldata not in (self.UNSET, self.FAIL, self.DELETED)
     
     def data_unset(self):
         """ Return True if the data property has not yet been set. """
-        return self._data in [self.UNSET]
+        fulldata = self.root._data if self.fragment else self._data
+        return fulldata in (self.UNSET,)
     
     @property
     def data(self):
@@ -519,6 +521,9 @@ class DataRep(object):
         pointer) from the full data representation as the full URI.
 
         """
+        if self.fragment:
+            return resolve_pointer(self.root.data, self.fragment)
+
         if self._data is DataRep.FAIL:
             raise DataPullError("Last attempt to pull failed")
 
@@ -527,11 +532,11 @@ class DataRep(object):
 
         if self._data is DataRep.UNSET:
             self.pull()
+            # Check that the pull did not fail just now.
+            if self._data is DataRep.FAIL:
+                raise DataPullError("Last attempt to pull failed")
 
-        if self.fragment:
-            return resolve_pointer(self.root.data, self.fragment)
-        else:
-            return self._data
+        return self._data
 
     @data.setter
     def data(self, value):
@@ -555,7 +560,7 @@ class DataRep(object):
 
         """
 
-        if self.root:
+        if self.fragment:
             self.root.pull()
             return self
         
@@ -583,8 +588,11 @@ class DataRep(object):
         full data representation will be pushed to the server.
         
         """
-        if self.root:
+        if self.fragment:
             if obj is not DataRep.UNSET:
+                # Set the data via the property, as this will
+                # leverage the fragment pointer to update the original
+                # data instance
                 self.data = obj
             self.root.push()
             return self
@@ -645,6 +653,15 @@ class DataRep(object):
         On success, this marks the data property as DELETED and returns `self`.
 
         """
+
+        if self.fragment:
+            # This behavior is consistent with set() and the URI RFC's
+            # requirement that a user-agent remove any fragment before
+            # sending the request to the server.
+            # TODO: It's arguably confusing, and there may be wiggle room
+            #       in the RFCs.
+            self.root.delete()
+            return self
 
         if self._deletelink is not True:
             raise LinkError(self._deletelink)
