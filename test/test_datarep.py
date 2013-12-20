@@ -36,7 +36,7 @@ ANY_DATA_SCHEMA = reschema.jsonschema.Schema.parse(input=ANY_DATA_SCHEMA_DICT,
                                                    api='/api/1.0/test')
 
 # It is important that this be more than one level deep due to bugs involving
-# whether the parent is set properly after the first level, but otherwise the
+# whether the root is set properly after the first level, but otherwise the
 # exact location of the fragment in the data is irrelevant.
 ANY_FRAGMENT_PTR = '/a/2'
 ANY_FRAGMENT_SCHEMA_DICT = {'type': 'number'}
@@ -79,15 +79,12 @@ def schema(mock_service, mock_jsonschema):
     return datarep.Schema(mock_service, mock_jsonschema)
     
 @pytest.fixture
-def any_datarep(mock_service, mock_jsonschema):
-    return datarep.DataRep(mock_service, ANY_URI, jsonschema=mock_jsonschema)
+def any_datarep(mock_service):
+    return datarep.DataRep(mock_service, ANY_URI, jsonschema=ANY_DATA_SCHEMA)
 
 @pytest.fixture
 def any_datarep_fragment(mock_service, mock_jsonschema, any_datarep):
-    return datarep.DataRep(mock_service, ANY_URI,
-                           jsonschema=mock_jsonschema,
-                           fragment=ANY_FRAGMENT_PTR,
-                           parent=any_datarep)
+    return datarep.DataRep(fragment=ANY_FRAGMENT_PTR, root=any_datarep)
 
 # ============ Schema tests ============================
 def test_schema_instantiation(mock_service, mock_jsonschema):
@@ -177,7 +174,7 @@ def test_datarep_instantiation_defaults(mock_service, mock_jsonschema):
     assert dr.service is mock_service
     assert dr.uri is ANY_URI
     assert dr.jsonschema is mock_jsonschema
-    assert dr.fragment is None
+    assert dr.fragment is ''
     assert dr._data is datarep.DataRep.UNSET
     assert dr.params is None
 
@@ -186,25 +183,53 @@ def test_datarep_instantiation_defaults(mock_service, mock_jsonschema):
     assert dr.data_valid() is False
     assert dr.data_unset() is True
 
-def test_datarep_instantiation_fragment_no_parent(mock_service,
+def test_datarep_instantiation_no_service(mock_jsonschema):
+    with pytest.raises(TypeError):
+        dr = datarep.DataRep(uri=ANY_URI, jsonschema=mock_jsonschema)
+
+def test_datarep_instantiation_no_uri(mock_service, mock_jsonschema):
+    with pytest.raises(TypeError):
+        dr = datarep.DataRep(mock_service, jsonschema=mock_jsonschema)
+
+def test_datarep_instantiation_no_jsonschema(mock_service):
+    with pytest.raises(TypeError):
+        dr = datarep.DataRep(mock_service, ANY_URI)
+
+def test_datarep_instantiation_fragment_no_root(mock_service,
                                                   mock_jsonschema):
     with pytest.raises(FragmentError):
         dr = datarep.DataRep(mock_service, ANY_URI, jsonschema=mock_jsonschema,
                              fragment=ANY_FRAGMENT_PTR)
 
-def test_datarep_instantiation_parent_no_fragment(mock_service, mock_jsonschema,
-                                                  any_datarep):
+def test_datarep_instantiation_root_no_fragment(mock_service, mock_jsonschema,
+                                                any_datarep):
     with pytest.raises(FragmentError):
         dr = datarep.DataRep(mock_service, ANY_URI, jsonschema=mock_jsonschema,
-                             parent=any_datarep)
+                             root=any_datarep)
 
-@pytest.mark.xfail
-def test_datarep_instantiation_fragment_service_mismatch(mock_service):
-    parent = datarep.DataRep(mock_service, ANY_URI, ANY_DATA_SCHEMA,
-                             data=ANY_DATA)
-    another_service = mock.Mock()
+def test_datarep_instantiation_fragment_service(any_datarep):
     with pytest.raises(FragmentError):
-        datarep.DataRep(another_service, ANY_URI, ANY_DATA_SCHEMA)
+        datarep.DataRep(any_datarep.service, root=any_datarep,
+                        fragment=ANY_FRAGMENT_PTR)
+
+def test_datarep_instantiation_fragment_uri(any_datarep):
+    with pytest.raises(FragmentError):
+        datarep.DataRep(uri=ANY_URI, root=any_datarep,
+                        fragment=ANY_FRAGMENT_PTR)
+
+def test_datarep_instantiation_fragment_jsonschema(any_datarep):
+    with pytest.raises(FragmentError):
+        datarep.DataRep(jsonschema=any_datarep.jsonschema, root=any_datarep,
+                        fragment=ANY_FRAGMENT_PTR)
+
+def test_datarep_instantiation_fragment_data(any_datarep):
+    with pytest.raises(FragmentError):
+        datarep.DataRep(data=42, root=any_datarep, fragment=ANY_FRAGMENT_PTR)
+
+def test_datarep_instantiation_fragment_params(any_datarep):
+    with pytest.raises(FragmentError):
+        datarep.DataRep(params={'x': 1}, root=any_datarep,
+                        fragment=ANY_FRAGMENT_PTR)
 
 def test_datarep_instantiation_empty_params(mock_service, mock_jsonschema):
     dr = datarep.DataRep(mock_service, ANY_URI, jsonschema=mock_jsonschema,
@@ -284,6 +309,57 @@ def test_datarep_with_delete(mock_service, mock_jsonschema):
     helper_check_links(dr, present=['_deletelink'],
                            absent=['_getlink', '_setlink', '_createlink'])
 
+# ================= valid/invalid ========================================
+
+def test_datarep_valid(any_datarep):
+    any_datarep._data = ANY_DATA
+    assert any_datarep.data_valid()
+    assert not any_datarep.data_unset()
+
+def test_datarep_not_valid_undef(any_datarep):
+    # This covers the undefined data case:
+    assert not any_datarep.data_valid()
+    assert any_datarep.data_unset()
+
+def test_datarep_not_valid_fail(any_datarep):
+    any_datarep._data = datarep.DataRep.FAIL
+    assert not any_datarep.data_valid()
+    assert not any_datarep.data_unset()
+    with pytest.raises(DataPullError):
+        any_datarep.data
+
+def test_datarep_not_valid_deleted(any_datarep):
+    any_datarep._data = datarep.DataRep.DELETED
+    assert not any_datarep.data_valid()
+    assert not any_datarep.data_unset()
+    with pytest.raises(DataPullError):
+        any_datarep.data
+
+def test_datarep_fragment_valid(any_datarep_fragment):
+    any_datarep_fragment.root._data = ANY_DATA
+    assert any_datarep_fragment.data_valid()
+    assert not any_datarep_fragment.data_unset()
+
+def test_datarep_fragment_not_valid_undef(any_datarep_fragment):
+    # This covers the undefined data case:
+    assert not any_datarep_fragment.data_valid()
+    assert any_datarep_fragment.data_unset()
+
+def test_datarep_fragment_not_valid_fail(any_datarep_fragment):
+    any_datarep_fragment.root._data = datarep.DataRep.FAIL
+    assert not any_datarep_fragment.data_valid()
+    assert not any_datarep_fragment.data_unset()
+    with pytest.raises(DataPullError):
+        any_datarep_fragment.data
+
+def test_datarep_fragment_not_valid_deleted(any_datarep_fragment):
+    # print any_datarep_fragment.jsonschema.fullname()
+    any_datarep_fragment.root._data = datarep.DataRep.DELETED
+    assert not any_datarep_fragment.data_valid()
+    assert not any_datarep_fragment.data_unset()
+    with pytest.raises(DataPullError):
+        any_datarep_fragment.data
+
 # ================= data, push, pull ========================================
 
 def test_datarep_data_getter_first_access(any_datarep):
@@ -296,10 +372,14 @@ def test_datarep_data_getter_first_access(any_datarep):
 
 def test_datarep_data_getter_first_access_fragment(any_datarep_fragment):
     def side_effect():
-        any_datarep_fragment._data = ANY_DATA
-    any_datarep_fragment.pull = mock.Mock(side_effect=side_effect)
+        any_datarep_fragment.root._data = ANY_DATA
+    any_datarep_fragment.root.pull = mock.Mock(side_effect=side_effect)
+    any_datarep_fragment.pull = mock.Mock()
+
     d = any_datarep_fragment.data
-    any_datarep_fragment.pull.assert_called_once_with()
+
+    assert not any_datarep_fragment.pull.called
+    any_datarep_fragment.root.pull.assert_called_once_with()
     assert d == resolve_pointer(ANY_DATA, ANY_FRAGMENT_PTR)
 
 def test_datarep_data_setter(any_datarep):
@@ -308,63 +388,56 @@ def test_datarep_data_setter(any_datarep):
     assert not any_datarep.pull.called
     assert any_datarep._data == ANY_DATA
 
-@pytest.mark.xfail
 def test_datarep_data_setter_fragment(mock_service):
-    parent_data = copy.deepcopy(ANY_DATA)
+    root_data = copy.deepcopy(ANY_DATA)
     fragment_data = copy.deepcopy(ANY_DATA)
-    parent = datarep.DataRep(mock_service, ANY_URI, ANY_DATA_SCHEMA,
-                             data=parent_data)
-    fragment = datarep.DataRep(mock_service, ANY_URI, ANY_FRAGMENT_SCHEMA,
-                               parent=parent, fragment=ANY_FRAGMENT_PTR,
-                               data=fragment_data)
+    root = datarep.DataRep(mock_service, ANY_URI, ANY_DATA_SCHEMA,
+                           data=root_data)
+    fragment = datarep.DataRep(root=root, fragment=ANY_FRAGMENT_PTR)
     modified_data = set_pointer(ANY_DATA, ANY_FRAGMENT_PTR, 42, inplace=False)
-    parent.pull = mock.Mock()
+    root.pull = mock.Mock()
     fragment.pull = mock.Mock()
 
     fragment.data = 42
 
-    assert fragment._data == modified_data
+    assert fragment._data is datarep.DataRep.FRAGMENT
     assert fragment.data == 42
-    assert parent.data == modified_data
+    assert root.data == modified_data
 
-    assert not parent.pull.called
+    assert not root.pull.called
     assert not fragment.pull.called
 
-@pytest.mark.xfail
 def test_datarep_push_fragment(mock_service):
-    parent_data = copy.deepcopy(ANY_DATA)
+    root_data = copy.deepcopy(ANY_DATA)
     fragment_data = copy.deepcopy(ANY_DATA)
-    parent = datarep.DataRep(mock_service, ANY_URI, ANY_DATA_SCHEMA,
-                             data=parent_data)
-    fragment = datarep.DataRep(mock_service, ANY_URI, ANY_FRAGMENT_SCHEMA,
-                               parent=parent, fragment=ANY_FRAGMENT_PTR,
-                               data=fragment_data)
+    root = datarep.DataRep(mock_service, ANY_URI, ANY_DATA_SCHEMA,
+                           data=root_data)
+    fragment = datarep.DataRep(root=root, fragment=ANY_FRAGMENT_PTR)
     modified_data = set_pointer(ANY_DATA, ANY_FRAGMENT_PTR, 42, inplace=False)
-    parent.push = mock.Mock()
-    parent.pull = mock.Mock()
+    root.push = mock.Mock()
+    root.pull = mock.Mock()
     fragment.pull = mock.Mock()
 
     retval = fragment.push(42)
 
-    assert fragment._data == modified_data
+    assert fragment._data is datarep.DataRep.FRAGMENT
     assert fragment.data == 42
-    assert parent.data == modified_data
+    assert root.data == modified_data
 
     assert retval is fragment
-    parent.push.assert_called_once_with()
-    assert not parent.pull.called
+    root.push.assert_called_once_with()
+    assert not root.pull.called
     assert not fragment.pull.called
 
-@pytest.mark.xfail
 def test_datrep_getitem(mock_service):
-    parent = datarep.DataRep(mock_service, ANY_URI, ANY_DATA_SCHEMA,
-                             data=ANY_DATA)
+    root = datarep.DataRep(mock_service, ANY_URI, ANY_DATA_SCHEMA,
+                           data=ANY_DATA)
 
-    fragment = ANY_FRAGMENT_SUBSCRIPT(parent)
-    assert fragment.jsonschema == parent.jsonschema[ANY_FRAGMENT_PTR]
-    assert fragment._data == parent._data
-    assert fragment.data == resolve_pointer(parent.data, ANY_FRAGMENT_PTR)
-    assert fragment.parent == parent
+    fragment = ANY_FRAGMENT_SUBSCRIPT(root)
+    assert fragment.jsonschema == root.jsonschema[ANY_FRAGMENT_PTR]
+    assert fragment._data is datarep.DataRep.FRAGMENT
+    assert fragment.data == resolve_pointer(root.data, ANY_FRAGMENT_PTR)
+    assert fragment.root == root
 
 @pytest.mark.xfail
 def test_datarep_with_params_data_setter(mock_service, mock_jsonschema):

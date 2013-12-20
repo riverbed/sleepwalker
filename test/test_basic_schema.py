@@ -18,6 +18,7 @@ from reschema.jsonschema import Ref
 from sleepwalker.service import Service
 from sleepwalker.datarep import DataRep
 from sleepwalker.connection import Connection
+from sleepwalker.exceptions import DataPullError
 
 from sim_connection import SimConnection
 
@@ -46,6 +47,9 @@ class BasicConnection(SimConnection):
 
     def x_links_action2(self, link, method, uri, data, params, headers):
         return {'t1': 15, 't2': 'foo'}
+
+    def button_links_press(self, link, method, uri, data, params, headers):
+        return None
 
     def items_links_get(self, link, method, uri, data, params, headers):
         if params:
@@ -223,7 +227,20 @@ class BasicTest(unittest.TestCase):
         rulers= self.service.bind('items', label='ruler')
         self.assertEqual(len(rulers.data), 0)
         
+    def test_resolve_without_get(self):
+        b = self.service.bind('button')
+        result = b.execute('press', data={'pressure': 1})
+        x = b.follow('x')
+        self.assertEqual(x.uri, self.service.bind('x').uri)
+        self.assertEqual(result.data, None)
+        self.assertEqual(b._data, DataRep.UNSET)
 
+    def test_resolve_after_invalid(self):
+        cat = self.service.bind('category', id=1)
+        cat._data = DataRep.FAIL
+        self.assertRaises(DataPullError, cat.follow, 'items')
+        self.assertRaises(DataPullError, cat.execute, 'purchase')
+        
 if __name__ == '__main__':
     logging.basicConfig(filename='test.log', level=logging.DEBUG)
     unittest.main()

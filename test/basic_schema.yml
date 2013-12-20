@@ -37,6 +37,25 @@ resources:
             response: { $ref: t }
             path: '$/x/action2'
 
+   button:
+      type: 'null'
+      relations:
+         x:
+            resource: x
+      links:
+         self:
+            path: '$/button'
+         press:
+            method: POST
+            request:
+               type: object
+               properties:
+                  pressure: { type: number }
+            response:
+               type: object
+               properties:
+                  pushback: { type: boolean }
+
    items:
       type: array
       items: 
@@ -125,8 +144,11 @@ resources:
             method: PUT
             request: { $ref: category }
             response: { $ref: category }
-         
-         
+
+         purchase:
+            method: POST
+            path: '$/categories/{id}/purchase'
+
       relations:
          items:
             resource: items
