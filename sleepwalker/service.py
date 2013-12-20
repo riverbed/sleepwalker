@@ -13,8 +13,9 @@ execute links and follow relations.
 
 Typical usage::
 
-   >>> catalog = Service()
-   >>> catalog.add_connection('restserver.com')
+   >>> import sleepwalker
+   >>> catalog = sleepwalker.Service()
+   >>> catalog.add_connection('http://restserver.com', port=8080) # for devs, this is 'http://localhost'
    >>> catalog.load_restschema('examples/catalog.yml')
    >>> book = catalog.bind('book', id=1)
 
@@ -33,7 +34,7 @@ class Service(object):
     def __init__(self):
         self.restschema = None
         self.connection = None
-        
+
     def add_connection(self, hostname, auth=None, port=None, verify=True):
         """ Initialize new connection to hostname
 
