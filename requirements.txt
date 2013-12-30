@@ -1,5 +1,5 @@
 mock
 pytest
--e git+git@git.lab.nbttech.com:reschema#egg=reschema
--e git+git@github.com:stefankoegl/python-json-pointer.git#egg=python-json-pointer
+jsonpointer
+-e git+git@gitlab.lab.nbttech.com:flyscript/reschema.git#egg=reschema
 -e .
