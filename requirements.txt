@@ -1,5 +1,5 @@
 mock
 pytest
 jsonpointer
--e git+git@gitlab.lab.nbttech.com:flyscript/reschema.git#egg=reschema
+-e git+https://gitlab.lab.nbttech.com/flyscript/reschema.git#egg=reschema
 -e .
