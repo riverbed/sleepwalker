@@ -1,5 +1,7 @@
+--index-url http://pypibox.lab.nbttech.com/flyscript/development/
 mock
 pytest
+requests
+uritemplate
 jsonpointer
--e git+https://gitlab.lab.nbttech.com/flyscript/reschema.git#egg=reschema
--e .
+reschema

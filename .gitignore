@@ -5,7 +5,7 @@ dist
 RELEASE-VERSION
 *.egg-info
 
-doc/_build
+docs/_build
 *.html
 *.pdf
 

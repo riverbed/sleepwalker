@@ -16,11 +16,8 @@ setup(name="sleepwalker",
       ],
       install_requires=[
           "requests>=1.2.3",
-          "PyYAML==3.10",
-          "simplejson>=3.3.0",
-          "Markdown>=2.2.1",
           "uritemplate>=0.6",
+          "jsonpointer",
           "reschema",
-          "jsonpointer"
       ],
       include_package_data=True)
