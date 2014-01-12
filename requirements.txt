@@ -1,6 +1,4 @@
---index-url http://pypibox.lab.nbttech.com/flyscript/development/
-mock
-pytest
+--extra-index-url http://pypibox.lab.nbttech.com/flyscript/development/
 requests
 uritemplate
 jsonpointer
