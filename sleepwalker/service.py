@@ -33,6 +33,7 @@ class Service(object):
     def __init__(self):
         self.restschema = None
         self.connection = None
+        self.headers = {}
         
     def add_connection(self, hostname, auth=None, port=None, verify=True):
         """ Initialize new connection to hostname
@@ -43,12 +44,24 @@ class Service(object):
         # just a passthrough to Connection init, do we need this?
         self.connection = Connection(hostname, auth, port, verify)
 
+    def add_headers(self, headers):
+        self.headers.update(headers)
+
     def request(self, method, uri, body=None, params=None, headers=None):
         """ Make request through connection and return result. """
         if not self.connection:
             raise ServiceException('No connection defined for service.')
-        return self.connection.json_request(method, uri, body, params, headers)
 
+        if headers is None:
+            # No passed headers, but service has defined headers, use them
+            headers = self.headers
+        elif self.headers is not None:
+            # Passed headeers and service headers, merge
+            headers = copy.copy(headers)
+            headers.update(self.headers)
+
+        return self.connection.json_request(method, uri, body, params, headers)
+    
     @property
     def response(self):
         """ Last response from server. """
