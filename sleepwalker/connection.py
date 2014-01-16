@@ -129,7 +129,7 @@ class Connection(object):
             extra_headers = CaseInsensitiveDict()
         extra_headers['Content-Type'] = 'application/json'
         extra_headers['Accept'] = 'application/json'
-        if body:
+        if body is not None:
             body = json.dumps(body, cls=self.JsonEncoder)
         r = self._request(method, uri, body, params, extra_headers)
         if r.status_code == 204 or len(r.content) == 0:
