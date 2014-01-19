@@ -129,11 +129,11 @@ full publisher resource::
 
    book:
       relations:
-         publisher: 
+         publisher:
             resource: publisher
             vars:
                id: '0/publisher_id'
-   
+
 This allows using the `follow()` method to get to a DataRep for the publisher::
 
    >>> pub = book.follow('publisher')
@@ -176,9 +176,9 @@ The schema defines the `full` relation to reach an author as follows::
          id: { type: number }
          title: { type: string }
          publisher_id: { type: number }
-         author_ids: 
+         author_ids:
             type: array
-            items: 
+            items:
                id: author_id
                type: number
 
@@ -212,17 +212,17 @@ created:
 
    >>> book.relations.keys()
    ['instances', 'publishers']
-   
+
    >>> book_author_ids = book['author_ids']
    >>> book_author_ids
    <DataRep '/api/catalog/1.0/books/1#/author_ids' type:book.author_ids>
 
    >>> book_author_ids.data
    [1, 9]
-   
+
    >>> book_author_ids_0 = book_author_ids[0]
    <DataRep '/api/catalog/1.0/books/1#/author_ids/0' type:book.author_ids[author_id]>
-   
+
    >>> book_author_ids_0.relations.keys()
    ['full']
 
@@ -283,9 +283,9 @@ class Schema(object):
         """
         self.service = service
         self.jsonschema = jsonschema
-        
+
     def __repr__(self):
-        s = 'Schema' 
+        s = 'Schema'
         if 'self' in self.jsonschema.links:
             selflink = self.jsonschema.links['self']
             uri = selflink.path.template
@@ -294,7 +294,7 @@ class Schema(object):
             s = s + " '" + uri + "'"
         s = s + ' type:' + self.jsonschema.fullname()
         return '<' + s + '>'
-        
+
     def bind(self, **kwargs):
         """ Return a DataRep object by binding variables in the 'self' link.
 
@@ -307,11 +307,11 @@ class Schema(object):
 
            >>> book_schema = Schema(catalog, book_jsonschema)
            >>> book1 = book_schema.bind(id=1)
-        
+
         """
         if 'self' not in self.jsonschema.links:
             raise LinkError("Cannot bind a schema that has no 'self' link")
-        
+
         selflink = self.jsonschema.links['self']
         variables = {}
         for var in uritemplate.variables(selflink.path.template):
@@ -338,14 +338,14 @@ class Schema(object):
 
 class _DataRepValue(object):
     """ Internal class used to represent special DataRep.data states. """
-    
+
     def __init__(self, label):
         self.label = label
 
     def __repr__(self):
         return "<_DataRepValue %s>" % self.label
 
-    
+
 class DataRep(object):
     """ A concrete representation of a resource at a fully defined address.
 
@@ -398,7 +398,7 @@ class DataRep(object):
             If `fragment` and `root` are passed, this must be None and the URI
             is inherited from the root.
         :type uri: string
-        
+
         :param jsonschema: a jsonschema.Schema derivative that describes the
             structure of the data at this uri.  If `fragment` and `root` are
             passed, this must be None, as the schema is inherited from the root.
@@ -420,7 +420,7 @@ class DataRep(object):
             when retrieving the data represetnation from the server.  If
             specified, this instance shall be read-only.
         """
-        
+
         self.uri = uri
         self.service = service
         self.jsonschema = jsonschema
@@ -469,7 +469,7 @@ class DataRep(object):
                   (resp, self.jsonschema))
         else:
             self._getlink = "No 'get' link for this resource"
-            
+
         # Check if the 'set' link is supported and the link request and
         # response match the jsonschema
         self._setlink = True
@@ -500,15 +500,15 @@ class DataRep(object):
                   "'create' link request does not match the response")
         else:
             self._createlink = "No 'create' link for this resource"
-            
+
         # Check if the 'delete' link is supported
         self._deletelink = True
         if self.fragment:
             self._deletelink = self.root._deletelink
         elif 'delete' not in self.links:
             self._deletelink = "No 'delete' link for this resource"
-            
-        
+
+
     def __repr__(self):
         s = "DataRep '%s" % self.uri
         if self.fragment:
@@ -540,13 +540,13 @@ class DataRep(object):
         associated the resource at the given address.  Calling `pull()`
         will refresh this propery with the latest data from the server.
         Calling `push()` will update the server with this data.
-        
+
         If data has not yet been retrieved from the server, the first
         call to access this proprerty will result in a call to `pull()`
         Subsequent accesses will not refresh the data automatically,
         the client must manually invoke `pull()` as needed to refresh.
 
-        
+
         If the last pull() resulted in a failure, an exception will be
         raised.
 
@@ -584,14 +584,14 @@ class DataRep(object):
             set_pointer(self.root.data, self.fragment, value)
         else:
             self._data = value
-        
+
     def pull(self):
         """ Retrieve a copy of the data representation for this resource from the server.
 
         This relies on the schema 'get' link.  This will always
         perform an interaction with the server to refresh the
         representation as per the 'get' link.
-        
+
         On success, the result is cached in `self.data` and `self` is returned.
 
         """
@@ -599,7 +599,7 @@ class DataRep(object):
         if self.fragment:
             self.root.pull()
             return self
-        
+
         if self._getlink is not True:
             raise LinkError(self._getlink)
 
@@ -617,11 +617,11 @@ class DataRep(object):
 
         If `obj` is passed, `self.data` is modified.  This is true
         even if the push to the server results in a failure.
-        
+
         Note that if this DataRep is associated with a fragment, the
         full data representation will be pulled if necessary,
         and the full modified data will then be pushed to the server.
-        
+
         :return: self
 
         :raises DataNotSetError: if no data exists or has been supplied
@@ -648,7 +648,7 @@ class DataRep(object):
         if self.params is not None:
             raise LinkError(
               "push not allowed, DataRep with parameters is readonly")
-            
+
         if obj is not DataRep.UNSET:
             self._data = obj
 
@@ -660,7 +660,7 @@ class DataRep(object):
 
         response = self.service.request('PUT', self.uri, self._data)
         self._data = response
-        
+
         return self
 
 
@@ -678,7 +678,7 @@ class DataRep(object):
             raise LinkError(self._createlink)
 
         link = self.links['create']
-        
+
         if VALIDATE_REQUEST:
             link.request.validate(obj)
 
@@ -688,7 +688,7 @@ class DataRep(object):
 
         return DataRep.from_schema(self.service, uri, jsonschema=link.response,
                                    data=response)
-    
+
 
     def delete(self):
         """ Issue a delete for this resource.
@@ -756,7 +756,7 @@ class DataRep(object):
 
         `name` is the name of the relation to follow, and must exist in
         the jsonschema `relations`
-        
+
         """
         if name not in self.relations:
             raise RelationError("%s has no relation '%s'" % (self, name))
@@ -821,7 +821,7 @@ class DataRep(object):
 
         response = self.service.request(method, uri, body, params)
 
-        # Validate response 
+        # Validate response
         if VALIDATE_RESPONSE and response_sch is not None:
             response_sch.validate(response)
 
