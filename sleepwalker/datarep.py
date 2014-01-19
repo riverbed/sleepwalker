@@ -9,7 +9,7 @@
 Using :py:class:`DataRep` objects
 ---------------------------------
 
-`DataRep` objects are the primary means of interacting with a 
+`DataRep` objects are the primary means of interacting with a
 REST server.  Each instance is associated with a URI defining the
 address of the resource on the server, and optionally a json-schema
 that describes the structure of the data.
@@ -428,8 +428,10 @@ class DataRep(object):
 
         self.fragment = fragment
         self.root = root
-        if fragment or root:
-            if not root:
+        if fragment or (root is not None):
+            # Evaluating a DataRep in boolean context can cause a pull()
+            # in order to see if data is empty or not, so compare to None.
+            if root is None:
                 raise FragmentError("Must supply root with fragment")
             elif not fragment:
                 raise FragmentError("Must supply fragment with root")
@@ -522,16 +524,36 @@ class DataRep(object):
             s = s + ' type:' + self.jsonschema.fullname()
         return '<' + s + '>'
 
+    def __nonzero__(self):
+        """ DataReps with False values, FAIL and DELETED, are False.
+
+        Note that evaluating an UNSET DataRep in boolean context causes it
+        to execute a pull in order to determine whether the resource is
+        currently represented by a non-empty data structure.
+
+        To check for unset data without danger of a network operation,
+        use `data_unset()`
+        """
+        return self.data_valid() and bool(self.data)
+
     def data_valid(self):
-        """ Return True if the data property has a valid data representation. """
+        """ Return True if the data property has a valid data representation.
+
+        This method will return false if no data has yet been pulled, even
+        if the resource on the server has valid data.  It will not ever
+        trigger a network operation.
+        """
         fulldata = self.root._data if self.fragment else self._data
         return fulldata not in (self.UNSET, self.FAIL, self.DELETED)
-    
+
     def data_unset(self):
-        """ Return True if the data property has not yet been set. """
+        """ Return True if the data property has not yet been set.
+
+        If a failed attempt to fetch the data has beenmade, this returns
+        false."""
         fulldata = self.root._data if self.fragment else self._data
         return fulldata in (self.UNSET,)
-    
+
     @property
     def data(self):
         """ Return the data associated with this resource.
@@ -787,7 +809,7 @@ class DataRep(object):
         `data` is used if the link defines a `request` object
 
         `kwargs` define additional parameters that may be required
-        to fulfill the path 
+        to fulfill the path
         """
         if name not in self.jsonschema.links:
             raise LinkError("%s has no link '%s'" % (self, name))
