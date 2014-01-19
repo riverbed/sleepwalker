@@ -41,8 +41,6 @@ ANY_DATA_SCHEMA = reschema.jsonschema.Schema.parse(input=ANY_DATA_SCHEMA_DICT,
 ANY_FRAGMENT_PTR = '/a/2'
 ANY_FRAGMENT_SCHEMA_DICT = {'type': 'number'}
 ANY_FRAGMENT_SCHEMA = ANY_DATA_SCHEMA[ANY_FRAGMENT_PTR]
-ANY_FRAGMENT_SUBSCRIPT = lambda dr: dr['a'][2]
-ANY_FRAGMENT_SLICE = lambda dr: dr['a'][1:]
 
 ANY_CONTAINER_PATH = '/foos'
 ANY_CONTAINER_PARAMS_SCHEMA = {'filter': {'type': 'string'},
@@ -88,6 +86,16 @@ def any_datarep(mock_service):
 def any_datarep_fragment(mock_service, mock_jsonschema, any_datarep):
     return datarep.DataRep.from_schema(fragment=ANY_FRAGMENT_PTR,
                                        root=any_datarep)
+
+@pytest.fixture
+def any_datarep_with_object_data(mock_service):
+    return datarep.DataRep.from_schema(mock_service, ANY_URI,
+                                       jsonschema=ANY_DATA_SCHEMA,
+                                       data=ANY_DATA)
+
+@pytest.fixture
+def any_datarep_fragment_with_array_data(any_datarep_with_object_data):
+    return any_datarep_with_object_data['a']
 
 @pytest.fixture
 def data_datarep(any_datarep):
@@ -192,7 +200,7 @@ def test_schema_bind_extra_kwargs(schema, self_link):
             schema.bind(**kwargs)
 
 def test_schema_bind_missing_var(schema, self_link):
-    with mock.patch('sleepwalker.datarep.DataRep') as patched:
+    with mock.patch('sleepwalker.datarep.DictDataRep') as patched:
         schema.jsonschema.links = {'self': self_link}
         with pytest.raises(MissingVar):
             schema.bind(thisiswrong='whatever')
@@ -481,6 +489,14 @@ def test_datarep_data_setter(any_datarep):
     assert not any_datarep.pull.called
     assert any_datarep._data == ANY_DATA
 
+def test_datarep_with_params_data_setter(mock_service, mock_jsonschema):
+    dr = datarep.DataRep.from_schema(mock_service, ANY_URI, mock_jsonschema,
+                                     params={'foo': 'bar'})
+    dr.pull = mock.Mock()
+    dr.data = ANY_DATA
+    assert not dr.pull.called
+    assert dr._data == ANY_DATA
+
 def test_datarep_data_setter_fragment(mock_service):
     root_data = copy.deepcopy(ANY_DATA)
     fragment_data = copy.deepcopy(ANY_DATA)
@@ -528,7 +544,19 @@ def test_datarep_getitem(mock_service):
                                        jsonschema=ANY_DATA_SCHEMA,
                                        data=ANY_DATA)
 
-    fragment = ANY_FRAGMENT_SUBSCRIPT(root)
+    fragment = root['a'][2]
+    assert fragment.jsonschema == root.jsonschema[ANY_FRAGMENT_PTR]
+    assert fragment._data is datarep.DataRep.FRAGMENT
+    assert fragment.data == resolve_pointer(root.data, ANY_FRAGMENT_PTR)
+    assert fragment.root == root
+
+def test_datarep_negative_getitem(mock_service):
+    root = datarep.DataRep.from_schema(service=mock_service,
+                                       uri=ANY_URI,
+                                       jsonschema=ANY_DATA_SCHEMA,
+                                       data=ANY_DATA)
+
+    fragment = root['a'][-1]
     assert fragment.jsonschema == root.jsonschema[ANY_FRAGMENT_PTR]
     assert fragment._data is datarep.DataRep.FRAGMENT
     assert fragment.data == resolve_pointer(root.data, ANY_FRAGMENT_PTR)
@@ -548,14 +576,78 @@ def test_datarep_getitem_slice(mock_service):
         assert fragment.data == resolve_pointer(root.data, ptr)
         assert fragment.root == root
 
-@pytest.mark.xfail
-def test_datarep_with_params_data_setter(mock_service, mock_jsonschema):
-    dr = datarep.DataRep(mock_service, ANY_URI, mock_jsonschema,
-                         params={'foo': 'bar'})
+def test_datarep_getitem_negative_stepped_slice(mock_service):
+    root = datarep.DataRep.from_schema(service=mock_service,
+                                       uri=ANY_URI,
+                                       jsonschema=ANY_DATA_SCHEMA,
+                                       data=ANY_DATA)
 
-    # Parametrized DataReps are read-only.
-    # TODO: Is TypeError right?  A read-only dict would raise this, but
-    #       sometimes the DataRep type supports writing.
-    with pytest.raises(TypeError):
-        datarep.data = {'somevalue': 'doesntmatter'}
+    fragments = root['a'][-1:-4:-2]
+    assert len(fragments) == 2
+    for fragment, ptr in zip(fragments, ('/a/2', '/a/0')):
+        assert fragment.jsonschema == root.jsonschema[ptr]
+        assert fragment._data == datarep.DataRep.FRAGMENT
+        assert fragment.data == resolve_pointer(root.data, ptr)
+        assert fragment.root == root
+
+def test_datarep_object___iter__(any_datarep_with_object_data):
+    drod = any_datarep_with_object_data
+    iterated_keys = []
+    for key in drod:
+        assert drod[key].data == drod.data[key]
+        iterated_keys.append(key)
+    data_keys = drod.data.keys()
+    assert iterated_keys == data_keys
+
+def test_datarep_object_iterkeys(any_datarep_with_object_data):
+    drod = any_datarep_with_object_data
+    # iterkeys() should just call plain __iter__() via the builtin.
+    with mock.patch('__builtin__.iter', mock.MagicMock()) as patched:
+        drod.iterkeys()
+        patched.assert_called_once_with(drod)
+
+def test_datarep_object_keys(any_datarep_with_object_data):
+    drod = any_datarep_with_object_data
+    assert drod.keys() == drod.data.keys()
+    
+def test_datarep_object_itervalues(any_datarep_with_object_data):
+    drod = any_datarep_with_object_data
+    data_values = drod.data.values()
+    index = 0
+    for value in drod.itervalues():
+        assert value.data == data_values[index]
+        index += 1
+
+    assert index == len(data_values)
+
+def test_datarep_object_values(any_datarep_with_object_data):
+    drod = any_datarep_with_object_data
+    assert [v.data for v in drod.values()] == drod.data.values()
+
+def test_datarep_object_iteritems(any_datarep_with_object_data):
+    drod = any_datarep_with_object_data
+    data_items = drod.data.items()
+    index = 0
+    for items in drod.iteritems():
+        assert (items[0], items[1].data) == data_items[index]
+        index += 1
+
+    assert index == len(data_items)
+
+def test_datarep_object_items(any_datarep_with_object_data):
+    drod = any_datarep_with_object_data
+    assert [(kv[0], kv[1].data) for kv in drod.items()] == drod.data.items()
+
+def test_datarep_array_index(any_datarep_fragment_with_array_data):
+    drfad = any_datarep_fragment_with_array_data
+    assert drfad.index(2) == drfad.data.index(2)
+
+def test_datarep_array_index_not_found(any_datarep_fragment_with_array_data):
+    drfad = any_datarep_fragment_with_array_data
+    with pytest.raises(ValueError):
+        drfad.index(100)
+
+def test_datarep_array___iter__(any_datarep_fragment_with_array_data):
+    drfad = any_datarep_fragment_with_array_data
+    assert [x.data for x in iter(drfad)] == drfad.data
 

@@ -379,7 +379,7 @@ class DataRep(object):
 
         if isinstance(js, reschema.jsonschema.Object):
             return DictDataRep(service, uri, jsonschema=jsonschema,
-                              root=root, fragment=fragment, **kwargs)
+                               root=root, fragment=fragment, **kwargs)
         elif isinstance(js, reschema.jsonschema.Array):
             return ListDataRep(service, uri, jsonschema=jsonschema,
                                root=root, fragment=fragment, **kwargs)
@@ -428,9 +428,10 @@ class DataRep(object):
 
         self.fragment = fragment
         self.root = root
+
+        # Evaluating a DataRep in boolean context can cause a pull()
+        # in order to see if data is empty or not, so compare to None.
         if fragment or (root is not None):
-            # Evaluating a DataRep in boolean context can cause a pull()
-            # in order to see if data is empty or not, so compare to None.
             if root is None:
                 raise FragmentError("Must supply root with fragment")
             elif not fragment:
@@ -857,12 +858,50 @@ class DataRep(object):
         return DataRep.from_schema(self.service, uri, jsonschema=response_sch,
                                    data=response)
 
-class DictDataRep(DataRep):
-    """ A DataRep for an object resource
+class ContainerDataRep(DataRep):
+    """ An intermediate class for common container implementations.
+
+    All concrete instances should be DictDataRep or ListDataRep.
+    """
+
+    class Iterator(object):
+        def __init__(self, dr):
+            self.datarep = dr
+            self.base_iter = iter(dr.data)
+
+        def __iter__(self):
+            return self
+
+        # Python 3 wants __next__() rather than next().
+        def __next__(self):
+            return self.next()
+
+    def __contains__(self, key):
+        return key in self.data
+
+    def __len__(self):
+        return len(self.data)
+
+class DictDataRep(ContainerDataRep):
+    """ A DataRep for a JSON object resource as a Python dict
 
     This class implements various dict operations to allow walking through
     the resource and producing fragmentary DataReps appropriately.
     """
+
+    class ValuesIterator(ContainerDataRep.Iterator):
+        def next(self):
+            # Return a fragment using the same key that would have been
+            # used to iterate over the normal data.
+            return self.datarep[self.base_iter.next()]
+
+    class ItemsIterator(ContainerDataRep.Iterator):
+        def next(self):
+            # Use the same key what would have been used to iterate
+            # over the normal data.
+            key = self.base_iter.next()
+            return key, self.datarep[key]
+
     def __getitem__(self, key):
         """ Index into the datarep based on an object key.
 
@@ -891,7 +930,53 @@ class DictDataRep(DataRep):
         return DataRep.from_schema(fragment=self.fragment + '/' + str(key),
                                    root=new_root)
 
-class ListDataRep(DataRep):
+    def has_key(self, key):
+        return k in self
+
+    def __iter__(self):
+        # A fragment's keys should be identical to the keys of its data.
+        return iter(self.data)
+
+    def iterkeys(self):
+        return iter(self)
+
+    def keys(self):
+        return [k for k in self.iterkeys()]
+
+    def itervalues(self):
+        return DictDataRep.ValuesIterator(self)
+
+    def values(self):
+        return [v for v in self.itervalues()]
+
+    def iteritems(self):
+        return DictDataRep.ItemsIterator(self)
+
+    def items(self):
+        return [kv for kv in self.iteritems()]
+
+    def get(self, key, default):
+        # TODO: Coming back to this in a separate commit.
+        raise NotImplementedError
+
+class ListDataRep(ContainerDataRep):
+    """ A DataRep for a JSON array resource as a Python list
+
+    This class implements various list operations to allow walking through
+    the resource and producing fragmentary DataReps appropriately.
+    """
+
+    class Iterator(ContainerDataRep.Iterator):
+        def __init__(self, dr):
+            super(ListDataRep.Iterator, self).__init__(dr)
+            self.counter = -1
+            self.length = len(dr)
+
+        def next(self):
+            self.counter += 1
+            if self.counter >= self.length:
+                raise StopIteration()
+            return self.datarep[self.counter]
 
     def __getitem__(self, key):
         """ Index into the datarep based on an index or slice.
@@ -912,10 +997,21 @@ class ListDataRep(DataRep):
              'name' : 'John Doe' }
 
         """
+        # Function for converting to positive indices for json-pointer.
+        def forward_index(i):
+            fi = i if i >= 0 else len(self.data) + i
+            if fi < 0 or fi >= len(self.data):
+                raise IndexError(i)
+            return fi
+
+        # Function for making the URI fragement by appending the pointer.
+        make_fragment = lambda i: self.fragment + '/' + str(i)
+
         if isinstance(key, slice):
             # Despite the name, slice.indices() returns start, stop, stride
             # rather than the literal indices, so we call range() on that.
-            indices = range(*key.indices(len(self.data)))
+            indices = [forward_index(i) for i in
+                       range(*key.indices(len(self.data)))]
             make_fragment = lambda i: self.fragment + '/' + str(i)
             new_root = self if self.root is None else self.root
             return [DataRep.from_schema(fragment=make_fragment(i),
@@ -930,11 +1026,14 @@ class ListDataRep(DataRep):
         except ValueError:
             raise TypeError(key)
 
-        if index < 0 or index >= len(self.data):
-            raise IndexError(key)
-
-        ptr_index = index if index >= 0 else len(self.data) - index
+        ptr_index = forward_index(index)
         new_root = self if self.root is None else self.root
         return DataRep.from_schema(
-          fragment=self.fragment + '/' + str(ptr_index), new_root=root)
+          fragment=self.fragment + '/' + str(ptr_index), root=new_root)
+
+    def __iter__(self):
+        return ListDataRep.Iterator(self)
+
+    def index(self, value):
+        return self.data.index(value)
 
