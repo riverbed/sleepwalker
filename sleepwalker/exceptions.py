@@ -35,7 +35,7 @@ class TypeException(ServiceException):
 #
 # Schema and operational exceptions
 #
-class MissingVar(SleepwalkerException):
+class MissingVariable(SleepwalkerException):
     """ URI template missing one or more variables. """
 
 

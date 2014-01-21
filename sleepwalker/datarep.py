@@ -242,7 +242,7 @@ import uritemplate
 from jsonpointer import resolve_pointer, set_pointer, JsonPointer
 import reschema.jsonschema
 
-from .exceptions import (MissingVar, InvalidParameter, RelationError,
+from .exceptions import (MissingVariable, InvalidParameter, RelationError,
                          FragmentError,
                          DataPullError, LinkError, DataNotSetError)
 
@@ -316,7 +316,7 @@ class Schema(object):
         variables = {}
         for var in uritemplate.variables(selflink.path.template):
             if var not in kwargs:
-                raise MissingVar(
+                raise MissingVariable(
                   'No value provided for variable "%s" in self template: %s' %
                   (var, selflink.path.template))
 
@@ -557,6 +557,25 @@ class DataRep(object):
         false."""
         fulldata = self.root._data if self.fragment else self._data
         return fulldata in (self.UNSET,)
+
+    def apply_params(self, **kwargs):
+        """ Discard existing params and return a new DataRep with given params.
+
+        The new DataRep has an UNSET value, whether or not this DataRep
+        has a pulled value or has un-pushed modificatinos.  The state of the
+        data in this DataRep is unaffected.
+
+        :return: a DataRep with the supplied parameters applied to the URI.
+        :raises NotImplementedError: if this DataRep URI has a fragment.
+        """
+        if self.fragment:
+            raise NotImplementedError
+
+        # Use everything except the params from self.
+        return DataRep.from_schema(service=self.service, uri=self.uri,
+                                   jsonschema=self.jsonschema,
+                                   root=self.root, fragment=self.fragment,
+                                   params=kwargs)
 
     @property
     def data(self):

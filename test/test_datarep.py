@@ -17,7 +17,7 @@ from jsonpointer import resolve_pointer, set_pointer
 import reschema.jsonschema
 from sleepwalker import service, datarep
 from sleepwalker.exceptions import (LinkError, InvalidParameter,
-                                    MissingVar, RelationError,
+                                    MissingVariable, RelationError,
                                     FragmentError, LinkError,
                                     DataPullError, DataNotSetError)
 
@@ -202,7 +202,7 @@ def test_schema_bind_extra_kwargs(schema, self_link):
 def test_schema_bind_missing_var(schema, self_link):
     with mock.patch('sleepwalker.datarep.DictDataRep') as patched:
         schema.jsonschema.links = {'self': self_link}
-        with pytest.raises(MissingVar):
+        with pytest.raises(MissingVariable):
             schema.bind(thisiswrong='whatever')
 
     self_link = mock.Mock(reschema.jsonschema.Link)()
@@ -460,6 +460,33 @@ def test_fragment_deleted_data_false(deleted_fragment):
     with pytest.raises(DataPullError):
         bool(deleted_fragment)
     assert deleted_fragment.root._data is datarep.DataRep.DELETED
+
+# ================= URL parameters ==========================================
+def test_apply_params(data_datarep):
+    # Pull to ensure that we have data that is not propagated.
+    data_datarep.pull()
+
+    with_params = data_datarep.apply_params(foo=1, bar="hello world")
+    assert with_params.params == {'foo': 1, 'bar': 'hello world'}
+    assert with_params._data is datarep.DataRep.UNSET
+
+    assert data_datarep.uri == with_params.uri
+    assert data_datarep.jsonschema is with_params.jsonschema
+    assert data_datarep.service is with_params.service
+    assert data_datarep.root is with_params.root
+    assert data_datarep.fragment == with_params.fragment
+
+    other_params = with_params.apply_params(more='stuff')
+    assert other_params.params == {'more': 'stuff'}
+    assert other_params._data is datarep.DataRep.UNSET
+
+    no_params = other_params.apply_params()
+    assert no_params.params is None
+    assert other_params._data is datarep.DataRep.UNSET
+
+def test_apply_params_to_fragment(data_fragment):
+    with pytest.raises(NotImplementedError):
+        data_fragment.apply_params()
 
 # ================= data, push, pull ========================================
 
