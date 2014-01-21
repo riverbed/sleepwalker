@@ -534,7 +534,14 @@ class DataRep(object):
         To check for unset data without danger of a network operation,
         use `data_unset()`
         """
-        return self.data_valid() and bool(self.data)
+        try:
+            return bool(self.data)
+        except DataPullError:
+            # This happens on DataRep.FAIL or DataRep.DELETED,
+            # and should be considered False.
+            # TODO: Shold we allow the exception to propagate instead?
+            #       It will be raised again the next time .data is accessed.
+            return False
 
     def data_valid(self):
         """ Return True if the data property has a valid data representation.
@@ -588,9 +595,12 @@ class DataRep(object):
 
         if self._data is DataRep.UNSET:
             self.pull()
-            # Check that the pull did not fail just now.
+            # Check that the pull did not fail or result in a delete just now.
             if self._data is DataRep.FAIL:
                 raise DataPullError("Last attempt to pull failed")
+
+            if self._data is DataRep.DELETED:
+                raise DataPullError("Resource was deleted")
 
         return self._data
 
