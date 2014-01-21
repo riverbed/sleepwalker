@@ -533,15 +533,11 @@ class DataRep(object):
 
         To check for unset data without danger of a network operation,
         use `data_unset()`
+
+        :raises DataPullError: if a pull is triggered and either it fails
+            or the resorce was deleted.
         """
-        try:
-            return bool(self.data)
-        except DataPullError:
-            # This happens on DataRep.FAIL or DataRep.DELETED,
-            # and should be considered False.
-            # TODO: Shold we allow the exception to propagate instead?
-            #       It will be raised again the next time .data is accessed.
-            return False
+        return bool(self.data)
 
     def data_valid(self):
         """ Return True if the data property has a valid data representation.
@@ -891,8 +887,9 @@ class DictDataRep(DataRep):
         if key not in self.data:
             raise KeyError(key)
             
+        new_root = self if self.root is None else self.root
         return DataRep.from_schema(fragment=self.fragment + '/' + str(key),
-                                   root=self.root if self.root else self)
+                                   root=new_root)
 
 class ListDataRep(DataRep):
 
@@ -920,7 +917,7 @@ class ListDataRep(DataRep):
             # rather than the literal indices, so we call range() on that.
             indices = range(*key.indices(len(self.data)))
             make_fragment = lambda i: self.fragment + '/' + str(i)
-            new_root = self.root if self.root else self
+            new_root = self if self.root is None else self.root
             return [DataRep.from_schema(fragment=make_fragment(i),
                                         root=new_root)
                     for i in indices]
@@ -937,7 +934,7 @@ class ListDataRep(DataRep):
             raise IndexError(key)
 
         ptr_index = index if index >= 0 else len(self.data) - index
+        new_root = self if self.root is None else self.root
         return DataRep.from_schema(
-          fragment=self.fragment + '/' + str(ptr_index),
-          root=self.root if self.root else self)
+          fragment=self.fragment + '/' + str(ptr_index), new_root=root)
 

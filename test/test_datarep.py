@@ -81,11 +81,13 @@ def schema(mock_service, mock_jsonschema):
     
 @pytest.fixture
 def any_datarep(mock_service):
-    return datarep.DataRep(mock_service, ANY_URI, jsonschema=ANY_DATA_SCHEMA)
+    return datarep.DataRep.from_schema(mock_service, ANY_URI,
+                                       jsonschema=ANY_DATA_SCHEMA)
 
 @pytest.fixture
 def any_datarep_fragment(mock_service, mock_jsonschema, any_datarep):
-    return datarep.DataRep(fragment=ANY_FRAGMENT_PTR, root=any_datarep)
+    return datarep.DataRep.from_schema(fragment=ANY_FRAGMENT_PTR,
+                                       root=any_datarep)
 
 @pytest.fixture
 def data_datarep(any_datarep):
@@ -96,7 +98,8 @@ def data_datarep(any_datarep):
 
 @pytest.fixture
 def data_fragment(data_datarep):
-    return datarep.DataRep(fragment=ANY_FRAGMENT_PTR, root=data_datarep)
+    return datarep.DataRep.from_schema(fragment=ANY_FRAGMENT_PTR,
+                                       root=data_datarep)
 
 @pytest.fixture
 def empty_datarep(any_datarep):
@@ -119,7 +122,8 @@ def failed_datarep(any_datarep):
 
 @pytest.fixture
 def failed_fragment(failed_datarep):
-    return datarep.DataRep(fragment=ANY_FRAGMENT_PTR, root=failed_datarep)
+    return datarep.DataRep.from_schema(fragment=ANY_FRAGMENT_PTR,
+                                       root=failed_datarep)
 
 @pytest.fixture
 def deleted_datarep(any_datarep):
@@ -130,7 +134,8 @@ def deleted_datarep(any_datarep):
 
 @pytest.fixture
 def deleted_fragment(deleted_datarep):
-    return datarep.DataRep(fragment=ANY_FRAGMENT_PTR, root=deleted_datarep)
+    return datarep.DataRep.from_schema(fragment=ANY_FRAGMENT_PTR,
+                                       root=deleted_datarep)
 
 # ============ Schema tests ============================
 def test_schema_instantiation(mock_service, mock_jsonschema):
@@ -426,19 +431,27 @@ def test_fragment_with_false_data(false_fragment):
 
 @pytest.mark.bool
 def test_datarep_failed_false(failed_datarep):
-    assert not failed_datarep
+    with pytest.raises(DataPullError):
+        bool(failed_datarep)
+    assert failed_datarep._data is datarep.DataRep.FAIL
 
 @pytest.mark.bool
 def test_fragment_failed_false(failed_fragment):
-    assert not failed_fragment
+    with pytest.raises(DataPullError):
+        bool(failed_fragment)
+    assert failed_fragment.root._data is datarep.DataRep.FAIL
 
 @pytest.mark.bool
 def test_datarep_deleted_data_false(deleted_datarep):
-    assert not deleted_datarep
+    with pytest.raises(DataPullError):
+        bool(deleted_datarep)
+    assert deleted_datarep._data is datarep.DataRep.DELETED
 
 @pytest.mark.bool
 def test_fragment_deleted_data_false(deleted_fragment):
-    assert not deleted_fragment
+    with pytest.raises(DataPullError):
+        bool(deleted_fragment)
+    assert deleted_fragment.root._data is datarep.DataRep.DELETED
 
 # ================= data, push, pull ========================================
 
