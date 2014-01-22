@@ -82,6 +82,10 @@ class HTTPError(SleepwalkerException):
     def __init__(self, response):
         self._response = response
 
+        # An error datarep would also likely have this, but non-datarep
+        # errors should have an easy way to get to it.
+        self.http_code = response.status_code
+
         # TODO: Build a datarep if the schema fits.
         #       For now, set to None anyway.
         self.datarep = None
@@ -91,7 +95,7 @@ class HTTPError(SleepwalkerException):
         # globals() accesses symbols, in this case classes, defined in
         # this module.
         # TODO: Less of a hack?
-        exception_class = globals().get('Error%d' % response.status_code, None)
+        exception_class = globals().get('_HTTP%d' % response.status_code, None)
         if exception_class is None:
             if response.status_code >= 400 and response.status_code < 500:
                 exception_class = ClientHTTPError
@@ -105,110 +109,173 @@ class HTTPError(SleepwalkerException):
 class ClientHTTPError(HTTPError):
     """ Client-side errors (4xx codes). """
 
-class Error400(ClientHTTPError):
+class HTTPBadRequest(ClientHTTPError):
+    pass
+class _HTTP400(HTTPBadRequest):
     pass
 
-class Error401(ClientHTTPError):
+class HTTPUnauthorized(ClientHTTPError):
+    pass
+class _HTTP401(HTTPUnauthorized):
     pass
 
-class Error402(ClientHTTPError):
+class HTTPPaymentRequired(ClientHTTPError):
+    pass
+class _HTTP402(HTTPPaymentRequired):
     pass
 
-class Error403(ClientHTTPError):
+class HTTPForbidden(ClientHTTPError):
+    pass
+class _HTTP403(HTTPForbidden):
     pass
 
-class Error404(ClientHTTPError):
+class HTTPNotFound(ClientHTTPError):
+    pass
+class _HTTP404(HTTPNotFound):
     pass
 
-class Error405(ClientHTTPError):
+class HTTPMethodNotAllowed(ClientHTTPError):
+    pass
+class _HTTP405(HTTPMethodNotAllowed):
     pass
 
-class Error406(ClientHTTPError):
+class HTTPNotAcceptable(ClientHTTPError):
+    pass
+class _HTTP406(HTTPNotAcceptable):
     pass
 
-class Error407(ClientHTTPError):
+class HTTPProxyAuthenticationRequired(ClientHTTPError):
+    pass
+class _HTTP407(HTTPProxyAuthenticationRequired):
     pass
 
-class Error408(ClientHTTPError):
+class HTTPRequestTimeout(ClientHTTPError):
+    pass
+class _HTTP408(HTTPRequestTimeout):
     pass
 
-class Error409(ClientHTTPError):
+class HTTPConflict(ClientHTTPError):
+    pass
+class _HTTP409(HTTPConflict):
     pass
 
-class Error410(ClientHTTPError):
+class HTTPGone(ClientHTTPError):
+    pass
+class _HTTP410(HTTPGone):
     pass
 
-class Error411(ClientHTTPError):
+class HTTPLengthRequired(ClientHTTPError):
+    pass
+class _HTTP411(HTTPLengthRequired):
     pass
 
-class Error412(ClientHTTPError):
+class HTTPPreconditionFailed(ClientHTTPError):
+    pass
+class _HTTP412(HTTPPreconditionFailed):
     pass
 
-class Error413(ClientHTTPError):
+class HTTPRequestEntityTooLarge(ClientHTTPError):
+    pass
+class _HTTP413(HTTPRequestEntityTooLarge):
     pass
 
-class Error414(ClientHTTPError):
+class HTTPRequestURITooLong(ClientHTTPError):
+    pass
+class _HTTP414(HTTPRequestURITooLong):
     pass
 
-class Error415(ClientHTTPError):
+class HTTPUnsupportedMediaType(ClientHTTPError):
+    pass
+class _HTTP415(HTTPUnsupportedMediaType):
     pass
 
-class Error416(ClientHTTPError):
+class HTTPRequestedRangeNotSatisfiable(ClientHTTPError):
+    pass
+class _HTTP416(ClientHTTPError):
     pass
 
-class Error417(ClientHTTPError):
+class HTTPExpectationFailed(ClientHTTPError):
+    pass
+class _HTTP417(HTTPExpectationFailed):
     pass
 
 # RFC 2324
-class Error418(ClientHTTPError):
-    """ I am a teapot. """
+class HTTPImATeapot(ClientHTTPError):
+    pass
+class _HTTP418(HTTPImATeapot):
     pass
 
 # RFC 2817
-class Error426(ClientHTTPError):
+class HTTPUpgradeRequired(ClientHTTPError):
+    pass
+class _HTTP426(HTTPUpgradeRequired):
     pass
 
 # RFC 6586
-class Error428(ClientHTTPError):
+class HTTPPreconditionRequired(ClientHTTPError):
+    pass
+class _HTTP428(HTTPPreconditionRequired):
     pass
 
-class Error429(ClientHTTPError):
+class HTTPTooManyRequests(ClientHTTPError):
+    pass
+class _HTTP429(HTTPTooManyRequests):
     pass
 
-class Error431(ClientHTTPError):
+class HTTPRequestHeaderFieldsTooLarge(ClientHTTPError):
+    pass
+class _HTTP431(HTTPRequestHeaderFieldsTooLarge):
     pass
 
 
 class ServerHTTPError(HTTPError):
     """ Server-side errors (5xx codes). """
 
-class Error500(ServerHTTPError):
+class HTTPInternalServerError(ServerHTTPError):
+    pass
+class _HTTP500(HTTPInternalServerError):
     pass
 
-class Error501(ServerHTTPError):
+class HTTPNotImplemented(ServerHTTPError):
+    pass
+class _HTTP501(HTTPNotImplemented):
     pass
 
-class Error502(ServerHTTPError):
+class HTTPBadGateway(ServerHTTPError):
+    pass
+class _HTTP502(HTTPBadGateway):
     pass
 
-class Error503(ServerHTTPError):
+class HTTPServiceUnavailable(ServerHTTPError):
+    pass
+class _HTTP503(HTTPServiceUnavailable):
     pass
 
-class Error504(ServerHTTPError):
+class HTTPGatewayTimeout(ServerHTTPError):
+    pass
+class _HTTP504(ServerHTTPError):
     pass
 
-class Error505(ServerHTTPError):
+class HTTPVersionNotSupported(ServerHTTPError):
+    pass
+class _HTTP505(HTTPVersionNotSupported):
     pass
 
 # RFC 2295
-class Error506(ServerHTTPError):
+class HTTPVariantAlsoNegotiates(ServerHTTPError):
+    pass
+class _HTTP506(HTTPVariantAlsoNegotiates):
     pass
 
 # RFC 2774
-class Error510(ServerHTTPError):
+class HTTPNotExtended(ServerHTTPError):
+    pass
+class _HTTP510(HTTPNotExtended):
     pass
 
 # RFC 6585
-class Error511(ServerHTTPError):
+class HTTPNetworkAuthenticationRequired(ServerHTTPError):
+    pass
+class _HTTP511(HTTPNetworkAuthenticationRequired):
     pass
 

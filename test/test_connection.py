@@ -9,7 +9,7 @@ import os
 import logging
 import unittest
 import urlparse
-from sleepwalker.exceptions import Error404
+from sleepwalker.exceptions import HTTPNotFound
 
 from sleepwalker.connection import Connection, URLError
 
@@ -65,8 +65,12 @@ class ConnectionTest(unittest.TestCase):
 
     def test_404(self):
         conn = Connection(HTTPBIN)
-        with self.assertRaises(Error404):
-            conn.json_request('GET', httpbin('get/notfound'))
+        with self.assertRaises(HTTPNotFound):
+            try:
+                conn.json_request('GET', httpbin('get/notfound'))
+            except HTTPNotFound as hnf:
+                self.assertEqual(hnf.http_code, 404)
+                raise
 
 
 if __name__ == '__main__':
