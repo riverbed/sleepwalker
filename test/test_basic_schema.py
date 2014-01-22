@@ -229,7 +229,7 @@ class BasicTest(unittest.TestCase):
         
     def test_resolve_without_get(self):
         b = self.service.bind('button')
-        result = b.execute('press', data={'pressure': 1})
+        result = b.execute('press', {'pressure': 1})
         x = b.follow('x')
         self.assertEqual(x.uri, self.service.bind('x').uri)
         self.assertEqual(result.data, None)

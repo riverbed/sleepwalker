@@ -799,17 +799,18 @@ class DataRep(object):
         return path.resolve(variables)
 
 
-    def follow(self, name, **kwargs):
+    def follow(self, _name, **kwargs):
         """ Follow a relation by name.
 
-        `name` is the name of the relation to follow, and must exist in
-        the jsonschema `relations`
+        :param: the name of the relation to follow, and must exist in
+                the jsonschema `relations`
 
+        Additional keyword arguments can be passed to resolve path variables.
         """
-        if name not in self.relations:
-            raise RelationError("%s has no relation '%s'" % (self, name))
+        if _name not in self.relations:
+            raise RelationError("%s has no relation '%s'" % (self, _name))
 
-        relation = self.relations[name]
+        relation = self.relations[_name]
 
         # The .data access checks and causes a pull if data is unset
         # But only do this if we have a get link.
@@ -826,21 +827,19 @@ class DataRep(object):
                                    jsonschema=relation.resource,
                                    params=params)
 
-    def execute(self, name, data=None, **kwargs):
+    def execute(self, _name, _data=None, **kwargs):
         """ Execute a link by name.
 
-        `name` is the link to follow and must exist in the jsonschema
-        `links`
+        :param: the link to follow and must exist in the jsonschema
 
-        `data` is used if the link defines a `request` object
+        :param: is used if the link defines a `request` object
 
-        `kwargs` define additional parameters that may be required
-        to fulfill the path
+        additional keword arguments may be passed to resolve path variables.
         """
-        if name not in self.jsonschema.links:
-            raise LinkError("%s has no link '%s'" % (self, name))
+        if _name not in self.jsonschema.links:
+            raise LinkError("%s has no link '%s'" % (self, _name))
 
-        link = self.jsonschema.links[name]
+        link = self.jsonschema.links[_name]
         uri = self._resolve_path(link.path, **kwargs)
         method = link.method
         request_sch = link.request
@@ -849,20 +848,20 @@ class DataRep(object):
         if method is None:
             raise LinkError(
               "%s: Unable to follow link '%s', no method defined" %
-              (self, name))
+              (self, _name))
 
         if VALIDATE_REQUEST and request_sch is not None:
             # Validate the request
-            request_sch.validate(data)
+            request_sch.validate(_data)
 
         # Performing an HTTP transaction
         if method == "GET":
             # XXXCJ - merge in kwargs?
-            params = data
+            params = _data
             body = None
         elif method in ["POST", "PUT"]:
             params = None
-            body = data
+            body = _data
         else:
             params = None
             body = None
