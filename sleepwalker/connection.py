@@ -16,7 +16,7 @@ from requests.structures import CaseInsensitiveDict
 from requests.packages.urllib3.util import parse_url
 from requests.packages.urllib3.poolmanager import PoolManager
 
-from .exceptions import ConnectionError, URLError
+from .exceptions import ConnectionError, URLError, HTTPError
 
 
 class SSLAdapter(HTTPAdapter):
@@ -105,7 +105,7 @@ class Connection(object):
 
         # check if good status response otherwise raise exception
         if not r.ok:
-            r.raise_for_status()
+            HTTPError.raise_by_status(r)
 
         return r
 
