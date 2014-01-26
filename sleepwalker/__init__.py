@@ -8,5 +8,4 @@
 from .service import Service
 from .connection import Connection
 from .datarep import Schema, DataRep
-from .exceptions import (SleepwalkerException, ConnectionError, MissingRestSchema,
-                         ResourceException, TypeException)
+from .exceptions import *

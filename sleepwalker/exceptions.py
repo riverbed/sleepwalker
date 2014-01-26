@@ -5,6 +5,9 @@
 #   https://github.com/riverbed/flyscript-portal/blob/master/LICENSE ("License").
 # This software is distributed "AS IS" as set forth in the License.
 
+# NOTE: If any imports are made in this module, please add an
+# __all__ = []
+# definition as __init__.py does a from .exceptions import *.
 
 #
 # General exception and base class
