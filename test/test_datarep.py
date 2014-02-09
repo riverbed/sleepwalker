@@ -40,7 +40,7 @@ ANY_DATA_SCHEMA = reschema.jsonschema.Schema.parse(input=ANY_DATA_SCHEMA_DICT,
 # exact location of the fragment in the data is irrelevant.
 ANY_FRAGMENT_PTR = '/a/2'
 ANY_FRAGMENT_SCHEMA_DICT = {'type': 'number'}
-ANY_FRAGMENT_SCHEMA = ANY_DATA_SCHEMA[ANY_FRAGMENT_PTR]
+ANY_FRAGMENT_SCHEMA = ANY_DATA_SCHEMA.by_pointer(ANY_FRAGMENT_PTR)
 
 ANY_CONTAINER_PATH = '/foos'
 ANY_CONTAINER_PARAMS_SCHEMA = {'filter': {'type': 'string'},
@@ -572,7 +572,7 @@ def test_datarep_getitem(mock_service):
                                        data=ANY_DATA)
 
     fragment = root['a'][2]
-    assert fragment.jsonschema == root.jsonschema[ANY_FRAGMENT_PTR]
+    assert fragment.jsonschema == root.jsonschema.by_pointer(ANY_FRAGMENT_PTR)
     assert fragment._data is datarep.DataRep.FRAGMENT
     assert fragment.data == resolve_pointer(root.data, ANY_FRAGMENT_PTR)
     assert fragment.root == root
@@ -584,7 +584,7 @@ def test_datarep_negative_getitem(mock_service):
                                        data=ANY_DATA)
 
     fragment = root['a'][-1]
-    assert fragment.jsonschema == root.jsonschema[ANY_FRAGMENT_PTR]
+    assert fragment.jsonschema == root.jsonschema.by_pointer(ANY_FRAGMENT_PTR)
     assert fragment._data is datarep.DataRep.FRAGMENT
     assert fragment.data == resolve_pointer(root.data, ANY_FRAGMENT_PTR)
     assert fragment.root == root
@@ -598,7 +598,7 @@ def test_datarep_getitem_slice(mock_service):
     fragments = root['a'][1:]
     assert len(fragments) == 2
     for fragment, ptr in zip(fragments, ('/a/1', '/a/2')):
-        assert fragment.jsonschema == root.jsonschema[ptr]
+        assert fragment.jsonschema == root.jsonschema.by_pointer(ptr)
         assert fragment._data == datarep.DataRep.FRAGMENT
         assert fragment.data == resolve_pointer(root.data, ptr)
         assert fragment.root == root
@@ -612,7 +612,7 @@ def test_datarep_getitem_negative_stepped_slice(mock_service):
     fragments = root['a'][-1:-4:-2]
     assert len(fragments) == 2
     for fragment, ptr in zip(fragments, ('/a/2', '/a/0')):
-        assert fragment.jsonschema == root.jsonschema[ptr]
+        assert fragment.jsonschema == root.jsonschema.by_pointer(ptr)
         assert fragment._data == datarep.DataRep.FRAGMENT
         assert fragment.data == resolve_pointer(root.data, ptr)
         assert fragment.root == root

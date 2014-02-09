@@ -375,7 +375,7 @@ class DataRep(object):
             raise TypeError(
               "Either jsonschema or root and fragment must be passed.")
 
-        js = jsonschema if jsonschema else root.jsonschema[fragment]
+        js = jsonschema if jsonschema else root.jsonschema.by_pointer(fragment)
 
         if isinstance(js, reschema.jsonschema.Object):
             return DictDataRep(service, uri, jsonschema=jsonschema,
@@ -443,7 +443,7 @@ class DataRep(object):
                   "'fragment' and 'root' are the only valid arguments "
                   "when instantiating a fragment.")
             self._data = DataRep.FRAGMENT
-            self.jsonschema = root.jsonschema[fragment]
+            self.jsonschema = root.jsonschema.by_pointer(fragment)
             self.service = root.service
             self.uri = root.uri
             self.params = root.params
