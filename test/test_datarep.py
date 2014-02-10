@@ -22,14 +22,43 @@ from sleepwalker.exceptions import (LinkError, InvalidParameter,
                                     DataPullError, DataNotSetError)
 
 ANY_URI = 'http://hostname.nbttech.com'
-ANY_DATA = {'x': 'y', 'a': [1, 2, 3]}
+ANY_DATA = {'x': 'y',
+            'a': [1, 2, 3],
+            'b': [
+                {
+                    # oneOf object or array.
+                    'c': [
+                        {'e': 4},
+                        [5, 6]
+                    ],
+                    'd': [],
+                }
+            ]}
+
 ANY_DATA_SCHEMA_DICT = {
     'type': 'object',
     'properties': {
         'x': {'type': 'string'},
-        'a': {'type': 'array', 'items': {'type': 'number'}}
+        'a': {'type': 'array', 'items': {'type': 'number'}},
+        'b': {
+            'type': 'array',
+            'items': {
+                'type': 'object',
+                'additionalProperties': {
+                    'type': 'array',
+                    'items': {
+                        'oneOf': [
+                            {'type': 'object',
+                             'additionalProperties': {'type': 'number'}},
+                            {'type': 'array', 'items': {'type': 'number'}}
+                        ]
+                    }
+                }
+            }
+        }
     }
 }
+
 # jsonschema.Schema instances are too much effort to mock.
 ANY_DATA_SCHEMA = reschema.jsonschema.Schema.parse(input=ANY_DATA_SCHEMA_DICT,
                                                    name='any',
@@ -616,6 +645,23 @@ def test_datarep_getitem_negative_stepped_slice(mock_service):
         assert fragment._data == datarep.DataRep.FRAGMENT
         assert fragment.data == resolve_pointer(root.data, ptr)
         assert fragment.root == root
+
+def test_datarep_complex_structure(any_datarep_with_object_data):
+    drod = any_datarep_with_object_data
+    assert type(drod) is datarep.DictDataRep
+    assert type(drod['b']) is datarep.ListDataRep
+    assert type(drod['b'][0]) is datarep.DictDataRep
+
+def test_datarep_additionalproperties(any_datarep_with_object_data):
+    drod = any_datarep_with_object_data
+    assert type(drod['b'][0]['c']) is datarep.ListDataRep
+    assert type(drod['b'][0]['d']) is datarep.ListDataRep
+
+@pytest.mark.xfail
+def test_datarep_oneof(any_datarep_with_object_data):
+    drod = any_datarep_with_object_data
+    assert type(drod['b'][0]['c'][0]) is datarep.DictDataRep
+    assert type(drod['b'][0]['c'][1]) is datarep.ListDataRep
 
 def test_datarep_object___iter__(any_datarep_with_object_data):
     drod = any_datarep_with_object_data
