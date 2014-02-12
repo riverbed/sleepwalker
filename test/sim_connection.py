@@ -19,7 +19,7 @@ class SimConnection(object):
 
     def __init__(self, test=None):
         self.test = test
-        self.restschemas = []
+        self.servicedefs = []
 
         self._next_id = {}
         self._collections = {}
@@ -30,12 +30,12 @@ class SimConnection(object):
         self._collections[name] = {}
         self._members.append(member)
         
-    def add_restschema(self, rs):
-        self.restschemas.append(rs)
+    def add_servicedef(self, rs):
+        self.servicedefs.append(rs)
 
     def json_request(self, method, uri, data, params, headers):
         logger.info("%s %s params=%s, data=%s" % (method, uri, params, data))
-        for rs in self.restschemas:
+        for rs in self.servicedefs:
             m = re.match("^%s(.*)$" % rs.servicePath, uri)
             if m:
                 break

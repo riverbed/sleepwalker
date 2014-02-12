@@ -32,6 +32,7 @@ class BasicConnection(SimConnection):
         SimConnection.__init__(self, test)
         self.add_collection('items', 'item')
         self.add_collection('categories', 'category')
+        self.add_collection('nullints', 'nullint')
     
         self._x = 5
 
@@ -83,9 +84,9 @@ class BasicTest(unittest.TestCase):
 
     def setUp(self):
         self.service = Service()
-        self.service.load_restschema(os.path.join(TEST_PATH, "basic_schema.yml"))
+        self.service.load_servicedef(os.path.join(TEST_PATH, "basic_schema.yml"))
         self.service.connection = BasicConnection(self)
-        self.service.connection.add_restschema(self.service.restschema)
+        self.service.connection.add_servicedef(self.service.servicedef)
 
     def test_x(self):
         x = self.service.bind('x')
@@ -115,7 +116,7 @@ class BasicTest(unittest.TestCase):
         categories = self.service.bind('categories')
         new_category = categories.create({'label': 'foo'})
         categories.pull()
-        category = categories['0'].follow('category')
+        category = categories[0].follow('category')
         # explicitly not calling category.pull() here!
         #category.pull()
         items = category.follow('items')

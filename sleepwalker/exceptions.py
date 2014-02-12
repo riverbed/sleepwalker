@@ -23,8 +23,8 @@ class ServiceException(SleepwalkerException):
     """ Sleepwalker Service error. """
 
 
-class MissingRestSchema(ServiceException):
-    """ An error occurred when trying to access the RestSchema. """
+class MissingServiceDef(ServiceException):
+    """ An error occurred when trying to access the service definition. """
 
 
 class ResourceException(ServiceException): 

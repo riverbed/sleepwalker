@@ -52,9 +52,9 @@ class CatalogConnection(SimConnection):
 class CatalogTest(unittest.TestCase):
     def setUp(self):
         self.service = Service()
-        self.service.load_restschema(os.path.join(TEST_PATH, "Catalog.yml"))
+        self.service.load_servicedef(os.path.join(TEST_PATH, "Catalog.yml"))
         self.service.connection = CatalogConnection(self)
-        self.service.connection.add_restschema(self.service.restschema)
+        self.service.connection.add_servicedef(self.service.servicedef)
 
     def test_catalog(self):
         authors = self.service.bind('authors')

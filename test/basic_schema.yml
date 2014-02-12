@@ -1,8 +1,9 @@
-restSchemaVersion: "2.0"
-name: "Basic"
+$schema: "service_def/2.0"
+name: "basic"
 version: "1.0"
 title: "REST API for a book catalog"
 servicePath: "/api/basic/1.0"
+
 types:
    t:
       type: object
@@ -153,4 +154,3 @@ resources:
          items:
             resource: items
             vars: { category: '0/id' }
-

@@ -15,13 +15,13 @@ Typical usage::
 
    >>> catalog = Service()
    >>> catalog.add_connection('restserver.com')
-   >>> catalog.load_restschema('examples/catalog.yml')
+   >>> catalog.load_servicedef('examples/catalog.yml')
    >>> book = catalog.bind('book', id=1)
 
 """
 
 
-from reschema import RestSchema
+from reschema import ServiceDef
 
 from .datarep import Schema
 from .connection import Connection
@@ -31,7 +31,7 @@ from .exceptions import ServiceException, ResourceException, TypeException
 class Service(object):
 
     def __init__(self):
-        self.restschema = None
+        self.servicedef = None
         self.connection = None
         self.headers = {}
         
@@ -69,17 +69,17 @@ class Service(object):
             return None
         return self.connection.response
 
-    def fetch_restschema(self):
+    def fetch_servicedef(self):
         """ Fetch the hosted rest-schema. """
         # TODO compare local version if any to hosted version
         # how to perform version checks, and what is the schema uri?
         pass
 
-    def load_restschema(self, filename):
+    def load_servicedef(self, filename):
         """ Load rest-schema from the given filename. """
 
-        self.restschema = RestSchema()
-        self.restschema.load(filename)
+        self.servicedef = ServiceDef()
+        self.servicedef.load(filename)
 
     def bind(self, _resource_name, **kwargs):
         """ Look up resource `_resource_name`, bind it and return a DataRep.
@@ -87,15 +87,15 @@ class Service(object):
             `_resource_name` - name of resource
             `**kwargs` - dict of attributes required to bind resource
         """
-        if self.restschema is None:
+        if self.servicedef is None:
             raise ServiceException("No rest-schema")
 
-        jsonschema = self.restschema.find_resource(_resource_name)
+        jsonschema = self.servicedef.find_resource(_resource_name)
         schema = Schema(self, jsonschema)
         return schema.bind(**kwargs)
 
     def _lookup(self, name, lookup, exception_class):
-        if self.restschema is None:
+        if self.servicedef is None:
             raise ServiceException("No rest-schema defined")
 
         try:
@@ -111,7 +111,7 @@ class Service(object):
 
             `name` - name of resource
         """
-        return self._lookup(name, self.restschema.find_resource,
+        return self._lookup(name, self.servicedef.find_resource,
                             ResourceException)
 
     def lookup_type(self, name):
@@ -119,4 +119,4 @@ class Service(object):
 
             `name` - name of type
         """
-        return self._lookup(name, self.restschema.find_type, TypeException)
+        return self._lookup(name, self.servicedef.find_type, TypeException)

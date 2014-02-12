@@ -17,7 +17,7 @@ that describes the structure of the data.
 There are a few ways to create `DataRep` instances:
 
 * Use `Service.bind()` method - this looks up a resource by name
-  in the rest-schema.
+  in the service definition.
 
 * Call `follow()` or `execute()` from another `DataRep` instance
 
@@ -30,7 +30,7 @@ from the server via `pull()` and a the server is updated via `push()`.
 A common read-modify-write cycle is shown below::
 
    >>> catalog = Service()
-   >>> catalog.load_restschema('examples/Catalog.yml')
+   >>> catalog.load_servicedef('examples/Catalog.yml')
    >>> book = catalog.bind('book', id=1)
    >>> book
    <DataRep '/api/catalog/1.0/book' type book>
@@ -53,7 +53,7 @@ Links
 
 A schema may define one or more links the describe operations than can be
 performed relative to an instance.  Each link is associated with a specific
-HTTP method as described in the rest-schema.
+HTTP method as described in the service definition.
 
 For standard CRUD style resources, a resource will define get/set/create/delete
 links.  Additional links that perform non-standard actions specific to that
@@ -258,7 +258,7 @@ class Schema(object):
     a json-schema.  If the json-schema includes a 'self' link, the bind()
     method may be used to instantiate concrete resources at fully defined
     addresses.  This class may also represent a `type` defined in
-    the rest-schema.
+    the service definition.
 
     Typcially, a `Schema` instance is created via the `Service` class.
     This allows inspection of the jsonschema as well as to bind and create
