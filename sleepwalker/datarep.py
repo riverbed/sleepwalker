@@ -377,6 +377,17 @@ class DataRep(object):
 
         js = jsonschema if jsonschema else root.jsonschema.by_pointer(fragment)
 
+        if isinstance(js, reschema.jsonschema.Ref):
+            # We need to look at what's on the far end of the reference,
+            # not the reference itself.
+            js = js.refschema
+
+        if isinstance(js, reschema.jsonschema.Multi):
+            # TODO: Fail clearly instead of collapsing in a heap as we
+            #       otherwise would do.  This is being fixed but it was
+            #       urgent to get the jsonchema.Ref fix published ASAP.
+            raise NotImplementedError
+
         if isinstance(js, reschema.jsonschema.Object):
             return DictDataRep(service, uri, jsonschema=jsonschema,
                                root=root, fragment=fragment, **kwargs)

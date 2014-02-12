@@ -6,7 +6,7 @@
 # This software is distributed "AS IS" as set forth in the License.
 
 import re
-from collections import OrderedDict
+from collections import OrderedDict, namedtuple
 import copy
 import json
 
@@ -15,6 +15,7 @@ import pytest
 from jsonpointer import resolve_pointer, set_pointer
 
 import reschema.jsonschema
+from reschema import restschema
 from sleepwalker import service, datarep
 from sleepwalker.exceptions import (LinkError, InvalidParameter,
                                     MissingVariable, RelationError,
@@ -22,18 +23,20 @@ from sleepwalker.exceptions import (LinkError, InvalidParameter,
                                     DataPullError, DataNotSetError)
 
 ANY_URI = 'http://hostname.nbttech.com'
-ANY_DATA = {'x': 'y',
-            'a': [1, 2, 3],
-            'b': [
-                {
-                    # oneOf object or array.
-                    'c': [
-                        {'e': 4},
-                        [5, 6]
-                    ],
-                    'd': [],
-                }
-            ]}
+ANY_DATA = {
+    'x': 'y',
+    'a': [1, 2, 3],
+    'b': [
+        {
+            # oneOf object or array.
+            'c': [
+                {'e': 4},
+                [5, 6]
+            ],
+            'd': [],
+        }
+    ],
+}
 
 ANY_DATA_SCHEMA_DICT = {
     'type': 'object',
@@ -51,12 +54,55 @@ ANY_DATA_SCHEMA_DICT = {
                             {'type': 'object',
                              'additionalProperties': {'type': 'number'}},
                             {'type': 'array', 'items': {'type': 'number'}}
-                        ]
-                    }
-                }
-            }
-        }
-    }
+                        ],
+                    },
+                },
+            },
+        },
+    },
+    'links': {'self': {'path': '$/anything'}},
+}
+
+ANY_SERVICE_DEF = {
+    'restSchemaVersion': '2.0',
+    'name': 'unittest',
+    'version': '1.0',
+    'title': 'API for use in unit tests',
+    'servicePath': '/api/unitest/1.0',
+    'defaultAuthorization': 'none',
+    'resources': {
+        'referenced': {
+            'type': 'object',
+            'properties': {
+                'thing': {'type': 'array', 'items': {'type': 'number'}},
+            },
+            'links': {
+                'self': {'path': '$/whatever'},
+                'get': {
+                    'request': {'$ref': 'referenced'},
+                    'response': {'$ref': 'referenced'},
+                },
+            },
+        },
+        'referencing': {
+            'type': 'object',
+            'properties': {
+                'reference': {'$ref': 'referenced'},
+            },
+            'links': {
+                'self': {'path': '$/notimportant'},
+                'get': {
+                    'request': {'$ref': 'referenced'},
+                    'response': {'$ref': 'referenced'},
+                },
+            },
+        },
+    },
+}
+
+ANY_SERVICE_DATA = {
+    'referenced': {'thing': [1, 2, 3]},
+    'referencing': {'reference': {'thing': [10, 20]}},
 }
 
 # jsonschema.Schema instances are too much effort to mock.
@@ -81,6 +127,32 @@ ANY_ITEM_PATH_VARS = {'id': 42}
 ANY_ITEM_PATH_RESOLVED = '/foos/items/42'
 ANY_ITEM_PARAMS_SCHEMA = {'timezone': {'type': 'string'}}
 ANY_ITEM_PARAMS = {'timezone': 'PST'}
+
+@pytest.fixture
+def ref_pair_datareps(mock_service):
+    rs = restschema.RestSchema()
+    rs.parse(ANY_SERVICE_DEF)
+
+    pair = namedtuple('referenced', 'referencing')
+    pair.referenced = datarep.DataRep.from_schema(
+        service=mock_service,
+        uri=ANY_URI,
+        jsonschema=rs.resources['referenced'])
+    pair.referencing = datarep.DataRep.from_schema(
+        service=mock_service,
+        uri=ANY_URI,
+        jsonschema=rs.resources['referencing'])
+
+    def referenced_data():
+        pair.referenced._data = ANY_SERVICE_DATA['referenced']
+    pair.referenced.pull = mock.Mock(side_effect=referenced_data)
+
+    def referencing_data():
+        pair.referencing._data = ANY_SERVICE_DATA['referencing']
+    pair.referencing.pull = mock.Mock(side_effect=referencing_data)
+
+    return pair
+
 
 @pytest.fixture
 def mock_service():
@@ -527,6 +599,7 @@ def test_datarep_data_getter_first_access(any_datarep):
     any_datarep.pull.assert_called_once_with()
     assert d == ANY_DATA
 
+
 def test_datarep_data_getter_first_access_fragment(any_datarep_fragment):
     def side_effect():
         any_datarep_fragment.root._data = ANY_DATA
@@ -539,11 +612,13 @@ def test_datarep_data_getter_first_access_fragment(any_datarep_fragment):
     any_datarep_fragment.root.pull.assert_called_once_with()
     assert d == resolve_pointer(ANY_DATA, ANY_FRAGMENT_PTR)
 
+
 def test_datarep_data_setter(any_datarep):
     any_datarep.pull = mock.Mock()
     any_datarep.data = ANY_DATA
     assert not any_datarep.pull.called
     assert any_datarep._data == ANY_DATA
+
 
 def test_datarep_with_params_data_setter(mock_service, mock_jsonschema):
     dr = datarep.DataRep.from_schema(mock_service, ANY_URI, mock_jsonschema,
@@ -552,6 +627,7 @@ def test_datarep_with_params_data_setter(mock_service, mock_jsonschema):
     dr.data = ANY_DATA
     assert not dr.pull.called
     assert dr._data == ANY_DATA
+
 
 def test_datarep_data_setter_fragment(mock_service):
     root_data = copy.deepcopy(ANY_DATA)
@@ -571,6 +647,7 @@ def test_datarep_data_setter_fragment(mock_service):
 
     assert not root.pull.called
     assert not fragment.pull.called
+
 
 def test_datarep_push_fragment(mock_service):
     root_data = copy.deepcopy(ANY_DATA)
@@ -594,6 +671,7 @@ def test_datarep_push_fragment(mock_service):
     assert not root.pull.called
     assert not fragment.pull.called
 
+
 def test_datarep_getitem(mock_service):
     root = datarep.DataRep.from_schema(service=mock_service,
                                        uri=ANY_URI,
@@ -606,6 +684,7 @@ def test_datarep_getitem(mock_service):
     assert fragment.data == resolve_pointer(root.data, ANY_FRAGMENT_PTR)
     assert fragment.root == root
 
+
 def test_datarep_negative_getitem(mock_service):
     root = datarep.DataRep.from_schema(service=mock_service,
                                        uri=ANY_URI,
@@ -617,6 +696,7 @@ def test_datarep_negative_getitem(mock_service):
     assert fragment._data is datarep.DataRep.FRAGMENT
     assert fragment.data == resolve_pointer(root.data, ANY_FRAGMENT_PTR)
     assert fragment.root == root
+
 
 def test_datarep_getitem_slice(mock_service):
     root = datarep.DataRep.from_schema(service=mock_service,
@@ -632,6 +712,7 @@ def test_datarep_getitem_slice(mock_service):
         assert fragment.data == resolve_pointer(root.data, ptr)
         assert fragment.root == root
 
+
 def test_datarep_getitem_negative_stepped_slice(mock_service):
     root = datarep.DataRep.from_schema(service=mock_service,
                                        uri=ANY_URI,
@@ -646,22 +727,33 @@ def test_datarep_getitem_negative_stepped_slice(mock_service):
         assert fragment.data == resolve_pointer(root.data, ptr)
         assert fragment.root == root
 
+
 def test_datarep_complex_structure(any_datarep_with_object_data):
     drod = any_datarep_with_object_data
     assert type(drod) is datarep.DictDataRep
     assert type(drod['b']) is datarep.ListDataRep
     assert type(drod['b'][0]) is datarep.DictDataRep
 
+
 def test_datarep_additionalproperties(any_datarep_with_object_data):
     drod = any_datarep_with_object_data
     assert type(drod['b'][0]['c']) is datarep.ListDataRep
     assert type(drod['b'][0]['d']) is datarep.ListDataRep
+
+
+def test_datarep_ref(ref_pair_datareps):
+    from_ref = ref_pair_datareps.referencing['reference']
+    assert type(from_ref) is datarep.DictDataRep
+    assert type(from_ref['thing']) is datarep.ListDataRep
+    assert type(from_ref['thing'][0]) is datarep.DataRep
+
 
 @pytest.mark.xfail
 def test_datarep_oneof(any_datarep_with_object_data):
     drod = any_datarep_with_object_data
     assert type(drod['b'][0]['c'][0]) is datarep.DictDataRep
     assert type(drod['b'][0]['c'][1]) is datarep.ListDataRep
+
 
 def test_datarep_object___iter__(any_datarep_with_object_data):
     drod = any_datarep_with_object_data
@@ -672,6 +764,7 @@ def test_datarep_object___iter__(any_datarep_with_object_data):
     data_keys = drod.data.keys()
     assert iterated_keys == data_keys
 
+
 def test_datarep_object_iterkeys(any_datarep_with_object_data):
     drod = any_datarep_with_object_data
     # iterkeys() should just call plain __iter__() via the builtin.
@@ -679,10 +772,12 @@ def test_datarep_object_iterkeys(any_datarep_with_object_data):
         drod.iterkeys()
         patched.assert_called_once_with(drod)
 
+
 def test_datarep_object_keys(any_datarep_with_object_data):
     drod = any_datarep_with_object_data
     assert drod.keys() == drod.data.keys()
     
+
 def test_datarep_object_itervalues(any_datarep_with_object_data):
     drod = any_datarep_with_object_data
     data_values = drod.data.values()
@@ -693,9 +788,11 @@ def test_datarep_object_itervalues(any_datarep_with_object_data):
 
     assert index == len(data_values)
 
+
 def test_datarep_object_values(any_datarep_with_object_data):
     drod = any_datarep_with_object_data
     assert [v.data for v in drod.values()] == drod.data.values()
+
 
 def test_datarep_object_iteritems(any_datarep_with_object_data):
     drod = any_datarep_with_object_data
@@ -707,18 +804,22 @@ def test_datarep_object_iteritems(any_datarep_with_object_data):
 
     assert index == len(data_items)
 
+
 def test_datarep_object_items(any_datarep_with_object_data):
     drod = any_datarep_with_object_data
     assert [(kv[0], kv[1].data) for kv in drod.items()] == drod.data.items()
+
 
 def test_datarep_array_index(any_datarep_fragment_with_array_data):
     drfad = any_datarep_fragment_with_array_data
     assert drfad.index(2) == drfad.data.index(2)
 
+
 def test_datarep_array_index_not_found(any_datarep_fragment_with_array_data):
     drfad = any_datarep_fragment_with_array_data
     with pytest.raises(ValueError):
         drfad.index(100)
+
 
 def test_datarep_array___iter__(any_datarep_fragment_with_array_data):
     drfad = any_datarep_fragment_with_array_data
