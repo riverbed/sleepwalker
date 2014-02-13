@@ -243,7 +243,7 @@ from jsonpointer import resolve_pointer, set_pointer, JsonPointer
 import reschema.jsonschema
 
 from .exceptions import (MissingVariable, InvalidParameter, RelationError,
-                         FragmentError,
+                         FragmentError, HTTPError,
                          DataPullError, LinkError, DataNotSetError)
 
 logger = logging.getLogger(__name__)
@@ -662,7 +662,7 @@ class DataRep(object):
         if self._getlink is not True:
             raise LinkError(self._getlink)
 
-        response = self.service.request('GET', self.uri, params=self.params)
+        response = self._request('GET', self.uri, params=self.params)
         self._data = response
         return self
 
@@ -717,7 +717,7 @@ class DataRep(object):
         if VALIDATE_REQUEST:
             self.jsonschema.validate(self._data)
 
-        response = self.service.request('PUT', self.uri, self._data)
+        response = self._request('PUT', self.uri, self._data)
         self._data = response
 
         return self
@@ -741,7 +741,7 @@ class DataRep(object):
         if VALIDATE_REQUEST:
             link.request.validate(obj)
 
-        response = self.service.request('POST', self.uri, obj)
+        response = self._request('POST', self.uri, obj)
         logger.debug("create response: %s" % response)
         uri = link.response.links['self'].path.resolve(response)
 
@@ -770,7 +770,7 @@ class DataRep(object):
         if self._deletelink is not True:
             raise LinkError(self._deletelink)
 
-        response = self.service.request('DELETE', self.uri)
+        self._request('DELETE', self.uri)
         self._data = DataRep.DELETED
         return self
 
@@ -877,7 +877,7 @@ class DataRep(object):
             params = None
             body = None
 
-        response = self.service.request(method, uri, body, params)
+        response = self._request(method, uri, body, params)
 
         # Validate response
         if VALIDATE_RESPONSE and response_sch is not None:
@@ -886,6 +886,31 @@ class DataRep(object):
         # Create a DataRep for the response
         return DataRep.from_schema(self.service, uri, jsonschema=response_sch,
                                    data=response)
+
+    def _request(self, method, uri, body=None, params=None, headers=None):
+        try:
+            return self.service.request(method, uri, body, params, headers)
+        except HTTPError as e:
+            # At this level, we can add a datarep for the error to the
+            # exception if it has json content, and then let it keep
+            # propagating.
+            if e.json_data is not None:
+                # TODO: Work out correct schemas.  Until then,
+                #       accept everything.
+                api = None
+                parent = self.jsonschema.parent
+                if parent is None:
+                    api = self.jsonschema.api
+                all_schema = reschema.jsonschema.Schema.parse(
+                    {'type': 'object'},
+                    name='httperror',
+                    parent=parent,
+                    api=api)
+                e.datarep = DataRep.from_schema(service=self.service,
+                                                uri=uri,
+                                                jsonschema=all_schema,
+                                                data=e.json_data)
+            raise
 
 class ContainerDataRep(DataRep):
     """ An intermediate class for common container implementations.
@@ -1065,4 +1090,3 @@ class ListDataRep(ContainerDataRep):
 
     def index(self, value):
         return self.data.index(value)
-

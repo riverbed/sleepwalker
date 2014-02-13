@@ -78,6 +78,8 @@ class URLError(ConnectionError):
 # Request/Response related exceptions
 #
 class HTTPError(SleepwalkerException):
+    code_map = {}
+
     """ Links an HTTP status with an optional DataRep for error the body. """
     # TODO: For now response is expected to be a requests.Response object,
     #       do we need to squash this interface leak as well?  Make it
@@ -85,20 +87,30 @@ class HTTPError(SleepwalkerException):
     def __init__(self, response):
         self._response = response
 
-        # An error datarep would also likely have this, but non-datarep
-        # errors should have an easy way to get to it.
+        # These fields are likely to be of immidiate interest for handling
+        # errors that are not DataRep-friendly.  We do not expose the entire
+        # response directly since if the user is digging that deeply they
+        # probably need to be using requests directly.
         self.http_code = response.status_code
+        self.headers = response.headers
 
-        # TODO: Build a datarep if the schema fits.
-        #       For now, set to None anyway.
+        # We won't know enough to create a DataRep when this is raised,
+        # but if we have JSON data higher sleepwalker layers will add one.
+        # So figure that out, and fall back to storing the response text
+        # if we can't decode some JSON.  500 errors will generally not
+        # have service definiton schemas, for instance, and will probably
+        # have text from the web server or generic framework.
         self.datarep = None
+        try:
+            self.json_data = response.json()
+            self.text = None
+        except ValueError:
+            self.json_data = None
+            self.text = response.text
 
     @classmethod
     def raise_by_status(cls, response):
-        # globals() accesses symbols, in this case classes, defined in
-        # this module.
-        # TODO: Less of a hack?
-        exception_class = globals().get('_HTTP%d' % response.status_code, None)
+        exception_class = cls.code_map.get(response.status_code, None)
         if exception_class is None:
             if response.status_code >= 400 and response.status_code < 500:
                 exception_class = ClientHTTPError
@@ -114,171 +126,169 @@ class ClientHTTPError(HTTPError):
 
 class HTTPBadRequest(ClientHTTPError):
     pass
-class _HTTP400(HTTPBadRequest):
-    pass
+HTTPError.code_map[400] = HTTPBadRequest
+
 
 class HTTPUnauthorized(ClientHTTPError):
     pass
-class _HTTP401(HTTPUnauthorized):
-    pass
+HTTPError.code_map[401] = HTTPUnauthorized
+
 
 class HTTPPaymentRequired(ClientHTTPError):
     pass
-class _HTTP402(HTTPPaymentRequired):
-    pass
+HTTPError.code_map[402] = HTTPPaymentRequired
+
 
 class HTTPForbidden(ClientHTTPError):
     pass
-class _HTTP403(HTTPForbidden):
-    pass
+HTTPError.code_map[403] = HTTPForbidden
+
 
 class HTTPNotFound(ClientHTTPError):
     pass
-class _HTTP404(HTTPNotFound):
-    pass
+HTTPError.code_map[404] = HTTPNotFound
+
 
 class HTTPMethodNotAllowed(ClientHTTPError):
     pass
-class _HTTP405(HTTPMethodNotAllowed):
-    pass
+HTTPError.code_map[405] = HTTPMethodNotAllowed
+
 
 class HTTPNotAcceptable(ClientHTTPError):
     pass
-class _HTTP406(HTTPNotAcceptable):
-    pass
+HTTPError.code_map[406] = HTTPNotAcceptable
+
 
 class HTTPProxyAuthenticationRequired(ClientHTTPError):
     pass
-class _HTTP407(HTTPProxyAuthenticationRequired):
-    pass
+HTTPError.code_map[407] = HTTPProxyAuthenticationRequired
+
 
 class HTTPRequestTimeout(ClientHTTPError):
     pass
-class _HTTP408(HTTPRequestTimeout):
-    pass
+HTTPError.code_map[408] = HTTPRequestTimeout
+
 
 class HTTPConflict(ClientHTTPError):
     pass
-class _HTTP409(HTTPConflict):
-    pass
+HTTPError.code_map[409] = HTTPConflict
+
 
 class HTTPGone(ClientHTTPError):
     pass
-class _HTTP410(HTTPGone):
-    pass
+HTTPError.code_map[410] = HTTPGone
+
 
 class HTTPLengthRequired(ClientHTTPError):
     pass
-class _HTTP411(HTTPLengthRequired):
-    pass
+HTTPError.code_map[411] = HTTPLengthRequired
+
 
 class HTTPPreconditionFailed(ClientHTTPError):
     pass
-class _HTTP412(HTTPPreconditionFailed):
-    pass
+HTTPError.code_map[412] = HTTPPreconditionFailed
+
 
 class HTTPRequestEntityTooLarge(ClientHTTPError):
     pass
-class _HTTP413(HTTPRequestEntityTooLarge):
-    pass
+HTTPError.code_map[413] = HTTPRequestEntityTooLarge
+
 
 class HTTPRequestURITooLong(ClientHTTPError):
     pass
-class _HTTP414(HTTPRequestURITooLong):
-    pass
+HTTPError.code_map[414] = HTTPRequestURITooLong
+
 
 class HTTPUnsupportedMediaType(ClientHTTPError):
     pass
-class _HTTP415(HTTPUnsupportedMediaType):
-    pass
+HTTPError.code_map[415] = HTTPUnsupportedMediaType
+
 
 class HTTPRequestedRangeNotSatisfiable(ClientHTTPError):
     pass
-class _HTTP416(ClientHTTPError):
-    pass
+HTTPError.code_map[416] = ClientHTTPError
+
 
 class HTTPExpectationFailed(ClientHTTPError):
     pass
-class _HTTP417(HTTPExpectationFailed):
-    pass
+HTTPError.code_map[417] = HTTPExpectationFailed
+
 
 # RFC 2324
 class HTTPImATeapot(ClientHTTPError):
     pass
-class _HTTP418(HTTPImATeapot):
-    pass
+HTTPError.code_map[418] = HTTPImATeapot
+
 
 # RFC 2817
 class HTTPUpgradeRequired(ClientHTTPError):
     pass
-class _HTTP426(HTTPUpgradeRequired):
-    pass
+HTTPError.code_map[426] = HTTPUpgradeRequired
+
 
 # RFC 6586
 class HTTPPreconditionRequired(ClientHTTPError):
     pass
-class _HTTP428(HTTPPreconditionRequired):
-    pass
+HTTPError.code_map[428] = HTTPPreconditionRequired
+
 
 class HTTPTooManyRequests(ClientHTTPError):
     pass
-class _HTTP429(HTTPTooManyRequests):
-    pass
+HTTPError.code_map[429] = HTTPTooManyRequests
+
 
 class HTTPRequestHeaderFieldsTooLarge(ClientHTTPError):
     pass
-class _HTTP431(HTTPRequestHeaderFieldsTooLarge):
-    pass
+HTTPError.code_map[431] = HTTPRequestHeaderFieldsTooLarge
 
 
 class ServerHTTPError(HTTPError):
     """ Server-side errors (5xx codes). """
 
+
 class HTTPInternalServerError(ServerHTTPError):
     pass
-class _HTTP500(HTTPInternalServerError):
-    pass
+HTTPError.code_map[500] = HTTPInternalServerError
+
 
 class HTTPNotImplemented(ServerHTTPError):
     pass
-class _HTTP501(HTTPNotImplemented):
-    pass
+HTTPError.code_map[501] = HTTPNotImplemented
+
 
 class HTTPBadGateway(ServerHTTPError):
     pass
-class _HTTP502(HTTPBadGateway):
-    pass
+HTTPError.code_map[502] = HTTPBadGateway
+
 
 class HTTPServiceUnavailable(ServerHTTPError):
     pass
-class _HTTP503(HTTPServiceUnavailable):
-    pass
+HTTPError.code_map[503] = HTTPServiceUnavailable
+
 
 class HTTPGatewayTimeout(ServerHTTPError):
     pass
-class _HTTP504(ServerHTTPError):
-    pass
+HTTPError.code_map[504] = ServerHTTPError
+
 
 class HTTPVersionNotSupported(ServerHTTPError):
     pass
-class _HTTP505(HTTPVersionNotSupported):
-    pass
+HTTPError.code_map[505] = HTTPVersionNotSupported
+
 
 # RFC 2295
 class HTTPVariantAlsoNegotiates(ServerHTTPError):
     pass
-class _HTTP506(HTTPVariantAlsoNegotiates):
-    pass
+HTTPError.code_map[506] = HTTPVariantAlsoNegotiates
+
 
 # RFC 2774
 class HTTPNotExtended(ServerHTTPError):
     pass
-class _HTTP510(HTTPNotExtended):
-    pass
+HTTPError.code_map[510] = HTTPNotExtended
+
 
 # RFC 6585
 class HTTPNetworkAuthenticationRequired(ServerHTTPError):
     pass
-class _HTTP511(HTTPNetworkAuthenticationRequired):
-    pass
-
+HTTPError.code_map[511] = HTTPNetworkAuthenticationRequired

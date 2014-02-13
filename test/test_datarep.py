@@ -9,6 +9,7 @@ import re
 from collections import OrderedDict, namedtuple
 import copy
 import json
+import requests
 
 import mock
 import pytest
@@ -20,7 +21,8 @@ from sleepwalker import service, datarep
 from sleepwalker.exceptions import (LinkError, InvalidParameter,
                                     MissingVariable, RelationError,
                                     FragmentError, LinkError,
-                                    DataPullError, DataNotSetError)
+                                    DataPullError, DataNotSetError,
+                                    HTTPError, HTTPNotFound)
 
 ANY_URI = 'http://hostname.nbttech.com'
 ANY_DATA = {
@@ -825,3 +827,32 @@ def test_datarep_array___iter__(any_datarep_fragment_with_array_data):
     drfad = any_datarep_fragment_with_array_data
     assert [x.data for x in iter(drfad)] == drfad.data
 
+
+def test_exception():
+    s = service.Service()
+    dr = datarep.DataRep.from_schema(s, uri=ANY_URI,
+                                     jsonschema=ANY_DATA_SCHEMA)
+    dr._getlink = True
+
+    response = mock.Mock(requests.Response)
+    response.status_code = 404
+    response.text = ('{"error_id": 2, "error_text": "Ur doin it wrong",'
+                     ' "error_info": {"details": false}}')
+    response.headers = {'content-type': 'application/json'}
+    r_json = json.loads(response.text)
+    response.json = mock.Mock(return_value=r_json)
+
+    def fake_request(*args, **kwargs):
+        HTTPError.raise_by_status(response)
+
+    with mock.patch('sleepwalker.service.Service.request',
+                    side_effect=fake_request):
+        with pytest.raises(HTTPNotFound) as einfo:
+            dr.pull()
+        exc_dr = einfo.value.datarep
+        assert type(exc_dr) is datarep.DictDataRep
+        assert exc_dr.data == r_json
+
+        # Empty schemas appear as Multi schemas and that does not yet work.
+        with pytest.raises(NotImplementedError):
+            assert exc_dr['error_info']['details'].data is False

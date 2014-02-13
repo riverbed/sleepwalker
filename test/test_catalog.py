@@ -14,7 +14,6 @@ import copy
 
 import uritemplate
 from reschema.jsonschema import Ref
-from requests.exceptions import HTTPError
 
 from sleepwalker.service import Service
 from sleepwalker.datarep import DataRep
