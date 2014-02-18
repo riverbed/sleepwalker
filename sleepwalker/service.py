@@ -1,8 +1,8 @@
-# Copyright (c) 2013 Riverbed Technology, Inc.
+# Copyright (c) 2013-2014 Riverbed Technology, Inc.
 #
 # This software is licensed under the terms and conditions of the
 # MIT License set forth at:
-#   https://github.com/riverbed/flyscript-portal/blob/master/LICENSE ("License").
+#   https://github.com/riverbed/sleepwalker/blob/master/LICENSE ("License").
 # This software is distributed "AS IS" as set forth in the License.
 
 """
@@ -21,8 +21,6 @@ Typical usage::
 """
 
 
-from reschema import ServiceDef
-
 from .datarep import Schema
 from .connection import Connection
 from .exceptions import ServiceException, ResourceException, TypeException
@@ -30,11 +28,70 @@ from .exceptions import ServiceException, ResourceException, TypeException
 
 class Service(object):
 
-    def __init__(self):
-        self.servicedef = None
-        self.connection = None
+    # Default api root for servicepath when not provided
+    # by the user
+    default_root = '/api'
+
+    def __init__(self, servicedef, instance=None,
+                 servicepath=None, connection=None):
+        """ Create a Service object
+
+        :param servicedef: related ServiceDef for this Service
+
+        :param instance: unique instance identifier for this
+            service relative to the same host (by connection)
+
+        :param servicepath: URI prefix excluding host/port
+            for all resources for this service.  Defaults
+            to /api/<instance>/<name>/<version>.
+
+        :param connection: connection to the target server
+            to use for all API calls
+
+        """
+        self.servicedef = servicedef
+        self.instance = instance
+        if servicepath is None:
+            if instance is None:
+                servicepath = ('%s/%s/%s' % (Service.default_root,
+                                             servicedef.name,
+                                             servicedef.version))
+            else:
+                servicepath = ('%s/%s/%s/%s' % (Service.default_root,
+                                                instance,
+                                                servicedef.name,
+                                                servicedef.version))
+
+        self.servicepath = servicepath
+        self.connection = connection
         self.headers = {}
-        
+
+    @classmethod
+    def init_by_id(cls, cache, service_id, **kwargs):
+        """ Create a Service object by service id.
+
+        :param cache: cache to use to lookup the service definition
+        :param str service_id: fully qualified id of the service definition
+        :param kwargs: See `__init__`
+
+        """
+        servicedef = cache.find_by_id(service_id)
+        return Service(servicedef, **kwargs)
+
+    @classmethod
+    def init_by_name(cls, cache, name, version, provider='riverbed', **kwargs):
+        """ Create a Service object by service <name,version,provider>
+
+        :param cache: cache to use to lookup the service definition
+        :param str name: the service name
+        :param str version: the service version
+        :param str provider: the provider of the service
+        :param kwargs: See `__init__`
+
+        """
+        servicedef = cache.find_by_name(name, version, provider)
+        return Service(servicedef, **kwargs)
+
     def add_connection(self, hostname, auth=None, port=None, verify=True):
         """ Initialize new connection to hostname
 
@@ -61,25 +118,13 @@ class Service(object):
             headers.update(self.headers)
 
         return self.connection.json_request(method, uri, body, params, headers)
-    
+
     @property
     def response(self):
         """ Last response from server. """
         if self.connection is None or self.connection.response is None:
             return None
         return self.connection.response
-
-    def fetch_servicedef(self):
-        """ Fetch the hosted rest-schema. """
-        # TODO compare local version if any to hosted version
-        # how to perform version checks, and what is the schema uri?
-        pass
-
-    def load_servicedef(self, filename):
-        """ Load rest-schema from the given filename. """
-
-        self.servicedef = ServiceDef()
-        self.servicedef.load(filename)
 
     def bind(self, _resource_name, **kwargs):
         """ Look up resource `_resource_name`, bind it and return a DataRep.

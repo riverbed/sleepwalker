@@ -1,8 +1,8 @@
-# Copyright (c) 2013 Riverbed Technology, Inc.
+# Copyright (c) 2013-2014 Riverbed Technology, Inc.
 #
 # This software is licensed under the terms and conditions of the
 # MIT License set forth at:
-#   https://github.com/riverbed/flyscript-portal/blob/master/LICENSE ("License").
+#   https://github.com/riverbed/sleepwalker/blob/master/LICENSE ("License").
 # This software is distributed "AS IS" as set forth in the License.
 
 import re
@@ -108,9 +108,11 @@ ANY_SERVICE_DATA = {
 }
 
 # jsonschema.Schema instances are too much effort to mock.
+ANY_SERVICE_DEF = reschema.ServiceDef()
+ANY_SERVICE_DEF.id = 'http://support.riverbed.com/api/anyservice/1.0'
 ANY_DATA_SCHEMA = reschema.jsonschema.Schema.parse(input=ANY_DATA_SCHEMA_DICT,
                                                    name='any',
-                                                   api='/api/1.0/test')
+                                                   servicedef=ANY_SERVICE_DEF)
 
 # It is important that this be more than one level deep due to bugs involving
 # whether the root is set properly after the first level, but otherwise the
@@ -129,6 +131,7 @@ ANY_ITEM_PATH_VARS = {'id': 42}
 ANY_ITEM_PATH_RESOLVED = '/foos/items/42'
 ANY_ITEM_PARAMS_SCHEMA = {'timezone': {'type': 'string'}}
 ANY_ITEM_PARAMS = {'timezone': 'PST'}
+
 
 @pytest.fixture
 def ref_pair_datareps(mock_service):
@@ -160,6 +163,7 @@ def ref_pair_datareps(mock_service):
 def mock_service():
     return mock.Mock(service.Service)()
 
+
 @pytest.fixture
 def mock_jsonschema():
     js = mock.MagicMock(reschema.jsonschema.Object)()
@@ -176,19 +180,23 @@ def mock_jsonschema():
     js.fullname = mock.Mock(return_value='fullname')
     return js
 
+
 @pytest.fixture
 def schema(mock_service, mock_jsonschema):
     return datarep.Schema(mock_service, mock_jsonschema)
-    
+
+
 @pytest.fixture
 def any_datarep(mock_service):
     return datarep.DataRep.from_schema(mock_service, ANY_URI,
                                        jsonschema=ANY_DATA_SCHEMA)
 
+
 @pytest.fixture
 def any_datarep_fragment(mock_service, mock_jsonschema, any_datarep):
     return datarep.DataRep.from_schema(fragment=ANY_FRAGMENT_PTR,
                                        root=any_datarep)
+
 
 @pytest.fixture
 def any_datarep_with_object_data(mock_service):
@@ -196,9 +204,11 @@ def any_datarep_with_object_data(mock_service):
                                        jsonschema=ANY_DATA_SCHEMA,
                                        data=ANY_DATA)
 
+
 @pytest.fixture
 def any_datarep_fragment_with_array_data(any_datarep_with_object_data):
     return any_datarep_with_object_data['a']
+
 
 @pytest.fixture
 def data_datarep(any_datarep):
@@ -207,10 +217,12 @@ def data_datarep(any_datarep):
     any_datarep.pull = mock.Mock(side_effect=side_effect)
     return any_datarep
 
+
 @pytest.fixture
 def data_fragment(data_datarep):
     return datarep.DataRep.from_schema(fragment=ANY_FRAGMENT_PTR,
                                        root=data_datarep)
+
 
 @pytest.fixture
 def empty_datarep(any_datarep):
@@ -219,10 +231,12 @@ def empty_datarep(any_datarep):
     any_datarep.pull = mock.Mock(side_effect=side_effect)
     return any_datarep
 
+
 @pytest.fixture
 def false_fragment(data_fragment):
     data_fragment.data = 0
     return data_fragment
+
 
 @pytest.fixture
 def failed_datarep(any_datarep):
@@ -231,10 +245,12 @@ def failed_datarep(any_datarep):
     any_datarep.pull = mock.Mock(side_effect=side_effect)
     return any_datarep
 
+
 @pytest.fixture
 def failed_fragment(failed_datarep):
     return datarep.DataRep.from_schema(fragment=ANY_FRAGMENT_PTR,
                                        root=failed_datarep)
+
 
 @pytest.fixture
 def deleted_datarep(any_datarep):
@@ -243,10 +259,12 @@ def deleted_datarep(any_datarep):
     any_datarep.pull = mock.Mock(side_effect=side_effect)
     return any_datarep
 
+
 @pytest.fixture
 def deleted_fragment(deleted_datarep):
     return datarep.DataRep.from_schema(fragment=ANY_FRAGMENT_PTR,
                                        root=deleted_datarep)
+
 
 # ============ Schema tests ============================
 def test_schema_instantiation(mock_service, mock_jsonschema):
@@ -254,9 +272,11 @@ def test_schema_instantiation(mock_service, mock_jsonschema):
     assert schema.service is mock_service
     assert schema.jsonschema is mock_jsonschema
 
+
 def test_schema_bind_no_self(schema):
     with pytest.raises(LinkError):
         schema.bind()
+
 
 def test_schema_bind_params_no_vars(schema):
     self_link = mock.Mock(reschema.jsonschema.Link)()
@@ -273,6 +293,7 @@ def test_schema_bind_params_no_vars(schema):
                                         jsonschema=schema.jsonschema,
                                         params=ANY_CONTAINER_PARAMS)
 
+
 @pytest.fixture
 def self_link():
     self_link = mock.Mock(reschema.jsonschema.Link)()
@@ -281,6 +302,7 @@ def self_link():
     self_link.path.resolve.return_value = ANY_ITEM_PATH_RESOLVED
     self_link._params = ANY_ITEM_PARAMS_SCHEMA
     return self_link
+
 
 def test_schema_bind_params_and_vars(schema, self_link):
     with mock.patch('sleepwalker.datarep.DataRep.from_schema') as patched:
@@ -293,8 +315,9 @@ def test_schema_bind_params_and_vars(schema, self_link):
                                         jsonschema=schema.jsonschema,
                                         params=ANY_ITEM_PARAMS)
 
+
 def test_schema_bind_extra_kwargs(schema, self_link):
-    with mock.patch('sleepwalker.datarep.DataRep.from_schema') as patched:
+    with mock.patch('sleepwalker.datarep.DataRep.from_schema'):
         schema.jsonschema.links = {'self': self_link}
         kwargs = ANY_ITEM_PATH_VARS.copy()
         kwargs.update(ANY_ITEM_PARAMS)
@@ -302,8 +325,9 @@ def test_schema_bind_extra_kwargs(schema, self_link):
         with pytest.raises(InvalidParameter):
             schema.bind(**kwargs)
 
+
 def test_schema_bind_missing_var(schema, self_link):
-    with mock.patch('sleepwalker.datarep.DictDataRep') as patched:
+    with mock.patch('sleepwalker.datarep.DictDataRep'):
         schema.jsonschema.links = {'self': self_link}
         with pytest.raises(MissingVariable):
             schema.bind(thisiswrong='whatever')
@@ -315,6 +339,7 @@ def test_schema_bind_missing_var(schema, self_link):
     self_link._params = {'thisiswrong': 'whocares'}
 
 # ============ _DataRepValue tests ============================
+
 
 def test_datarep_value():
     drv = datarep._DataRepValue('anylabel')
@@ -329,6 +354,7 @@ def helper_check_links(dr, present, absent):
     for link_attr in absent:
         value = getattr(dr, link_attr)
         assert re.match(r"No '\w+' link for this resource$", value)
+
 
 def test_datarep_instantiation_defaults(mock_service, mock_jsonschema):
     dr = datarep.DataRep(mock_service, ANY_URI, jsonschema=mock_jsonschema)
@@ -345,58 +371,70 @@ def test_datarep_instantiation_defaults(mock_service, mock_jsonschema):
     assert dr.data_valid() is False
     assert dr.data_unset() is True
 
+
 def test_datarep_instantiation_no_service(mock_jsonschema):
     with pytest.raises(TypeError):
-        dr = datarep.DataRep(uri=ANY_URI, jsonschema=mock_jsonschema)
+        datarep.DataRep(uri=ANY_URI, jsonschema=mock_jsonschema)
+
 
 def test_datarep_instantiation_no_uri(mock_service, mock_jsonschema):
     with pytest.raises(TypeError):
-        dr = datarep.DataRep(mock_service, jsonschema=mock_jsonschema)
+        datarep.DataRep(mock_service, jsonschema=mock_jsonschema)
+
 
 def test_datarep_instantiation_no_jsonschema(mock_service):
     with pytest.raises(TypeError):
-        dr = datarep.DataRep(mock_service, ANY_URI)
+        datarep.DataRep(mock_service, ANY_URI)
+
 
 def test_datarep_instantiation_fragment_no_root(mock_service,
-                                                  mock_jsonschema):
+                                                mock_jsonschema):
     with pytest.raises(FragmentError):
-        dr = datarep.DataRep(mock_service, ANY_URI, jsonschema=mock_jsonschema,
-                             fragment=ANY_FRAGMENT_PTR)
+        datarep.DataRep(mock_service, ANY_URI, jsonschema=mock_jsonschema,
+                        fragment=ANY_FRAGMENT_PTR)
+
 
 def test_datarep_instantiation_root_no_fragment(mock_service, mock_jsonschema,
                                                 any_datarep):
     with pytest.raises(FragmentError):
-        dr = datarep.DataRep(mock_service, ANY_URI, jsonschema=mock_jsonschema,
-                             root=any_datarep)
+        datarep.DataRep(mock_service, ANY_URI, jsonschema=mock_jsonschema,
+                        root=any_datarep)
+
 
 def test_datarep_instantiation_fragment_service(any_datarep):
     with pytest.raises(FragmentError):
         datarep.DataRep(any_datarep.service, root=any_datarep,
                         fragment=ANY_FRAGMENT_PTR)
 
+
 def test_datarep_instantiation_fragment_uri(any_datarep):
     with pytest.raises(FragmentError):
         datarep.DataRep(uri=ANY_URI, root=any_datarep,
                         fragment=ANY_FRAGMENT_PTR)
+
 
 def test_datarep_instantiation_fragment_jsonschema(any_datarep):
     with pytest.raises(FragmentError):
         datarep.DataRep(jsonschema=any_datarep.jsonschema, root=any_datarep,
                         fragment=ANY_FRAGMENT_PTR)
 
+
 def test_datarep_instantiation_fragment_data(any_datarep):
     with pytest.raises(FragmentError):
         datarep.DataRep(data=42, root=any_datarep, fragment=ANY_FRAGMENT_PTR)
+
 
 def test_datarep_instantiation_fragment_params(any_datarep):
     with pytest.raises(FragmentError):
         datarep.DataRep(params={'x': 1}, root=any_datarep,
                         fragment=ANY_FRAGMENT_PTR)
 
+
 def test_datarep_instantiation_empty_params(mock_service, mock_jsonschema):
     dr = datarep.DataRep(mock_service, ANY_URI, jsonschema=mock_jsonschema,
                          params={})
     assert dr.params is None
+
 
 def test_datarep_with_get(mock_service, mock_jsonschema):
     mock_jsonschema.links['get'] = mock.Mock(reschema.jsonschema.Link)()
@@ -404,7 +442,8 @@ def test_datarep_with_get(mock_service, mock_jsonschema):
 
     dr = datarep.DataRep(mock_service, ANY_URI, jsonschema=mock_jsonschema)
     helper_check_links(dr, present=['_getlink'],
-                           absent=['_setlink', '_createlink', '_deletelink'])
+                       absent=['_setlink', '_createlink', '_deletelink'])
+
 
 def test_datarep_with_get_invalid_response(mock_service, mock_jsonschema):
     mock_jsonschema.links['get'] = mock.Mock(reschema.jsonschema.Link)()
@@ -415,13 +454,15 @@ def test_datarep_with_get_invalid_response(mock_service, mock_jsonschema):
                                                '_createlink', '_deletelink'])
     assert 'response does not match:' in dr._getlink
 
+
 def test_datarep_with_set(mock_service, mock_jsonschema):
     mock_jsonschema.links['set'] = mock.Mock(reschema.jsonschema.Link)()
     mock_jsonschema.matches = mock.Mock(return_value=True)
 
     dr = datarep.DataRep(mock_service, ANY_URI, jsonschema=mock_jsonschema)
     helper_check_links(dr, present=['_setlink'],
-                           absent=['_getlink', '_createlink', '_deletelink'])
+                       absent=['_getlink', '_createlink', '_deletelink'])
+
 
 def test_datarep_with_set_invalid_request(mock_service, mock_jsonschema):
     mock_jsonschema.links['set'] = mock.Mock(reschema.jsonschema.Link)()
@@ -435,6 +476,7 @@ def test_datarep_with_set_invalid_request(mock_service, mock_jsonschema):
                                                '_createlink', '_deletelink'])
     assert "'set' link request does not match schema" == dr._setlink
 
+
 def test_datarep_with_set_invalid_response(mock_service, mock_jsonschema):
     mock_jsonschema.links['set'] = mock.Mock(reschema.jsonschema.Link)()
     mock_jsonschema.matches = mock.Mock(side_effect=(x for x in (True, False)))
@@ -444,24 +486,27 @@ def test_datarep_with_set_invalid_response(mock_service, mock_jsonschema):
                                                '_createlink', '_deletelink'])
     assert "'set' link response does not match schema" == dr._setlink
 
+
 def test_datarep_with_create(mock_service, mock_jsonschema):
     mock_jsonschema.links['create'] = mock.Mock(reschema.jsonschema.Link)()
     mock_jsonschema.links['create'].request.matches = \
-      mock.Mock(return_value=True)
+        mock.Mock(return_value=True)
 
     dr = datarep.DataRep(mock_service, ANY_URI, jsonschema=mock_jsonschema)
     helper_check_links(dr, present=['_createlink'],
-                           absent=['_getlink', '_setlink', '_deletelink'])
+                       absent=['_getlink', '_setlink', '_deletelink'])
+
 
 def test_datarep_with_create_req_resp_not_match(mock_service, mock_jsonschema):
     mock_jsonschema.links['create'] = mock.Mock(reschema.jsonschema.Link)()
     mock_jsonschema.links['create'].request.matches = \
-      mock.Mock(return_value=False)
+        mock.Mock(return_value=False)
 
     dr = datarep.DataRep(mock_service, ANY_URI, jsonschema=mock_jsonschema)
     helper_check_links(dr, present=[], absent=['_getlink', '_setlink',
                                                '_deletelink'])
     assert 'request does not match the response' in dr._createlink
+
 
 def test_datarep_with_delete(mock_service, mock_jsonschema):
     mock_jsonschema.links['delete'] = mock.Mock(reschema.jsonschema.Link)()
@@ -469,19 +514,22 @@ def test_datarep_with_delete(mock_service, mock_jsonschema):
 
     dr = datarep.DataRep(mock_service, ANY_URI, jsonschema=mock_jsonschema)
     helper_check_links(dr, present=['_deletelink'],
-                           absent=['_getlink', '_setlink', '_createlink'])
+                       absent=['_getlink', '_setlink', '_createlink'])
 
 # ================= valid/invalid ========================================
+
 
 def test_datarep_valid(any_datarep):
     any_datarep._data = ANY_DATA
     assert any_datarep.data_valid()
     assert not any_datarep.data_unset()
 
+
 def test_datarep_not_valid_undef(any_datarep):
     # This covers the undefined data case:
     assert not any_datarep.data_valid()
     assert any_datarep.data_unset()
+
 
 def test_datarep_not_valid_fail(any_datarep):
     any_datarep._data = datarep.DataRep.FAIL
@@ -490,6 +538,7 @@ def test_datarep_not_valid_fail(any_datarep):
     with pytest.raises(DataPullError):
         any_datarep.data
 
+
 def test_datarep_not_valid_deleted(any_datarep):
     any_datarep._data = datarep.DataRep.DELETED
     assert not any_datarep.data_valid()
@@ -497,15 +546,18 @@ def test_datarep_not_valid_deleted(any_datarep):
     with pytest.raises(DataPullError):
         any_datarep.data
 
+
 def test_datarep_fragment_valid(any_datarep_fragment):
     any_datarep_fragment.root._data = ANY_DATA
     assert any_datarep_fragment.data_valid()
     assert not any_datarep_fragment.data_unset()
 
+
 def test_datarep_fragment_not_valid_undef(any_datarep_fragment):
     # This covers the undefined data case:
     assert not any_datarep_fragment.data_valid()
     assert any_datarep_fragment.data_unset()
+
 
 def test_datarep_fragment_not_valid_fail(any_datarep_fragment):
     any_datarep_fragment.root._data = datarep.DataRep.FAIL
@@ -513,6 +565,7 @@ def test_datarep_fragment_not_valid_fail(any_datarep_fragment):
     assert not any_datarep_fragment.data_unset()
     with pytest.raises(DataPullError):
         any_datarep_fragment.data
+
 
 def test_datarep_fragment_not_valid_deleted(any_datarep_fragment):
     # print any_datarep_fragment.jsonschema.fullname()
@@ -524,21 +577,26 @@ def test_datarep_fragment_not_valid_deleted(any_datarep_fragment):
 
 # ================= True/False  ========================================
 
+
 @pytest.mark.bool
 def test_datarep_with_true_data(data_datarep):
     assert data_datarep
+
 
 @pytest.mark.bool
 def test_fragment_with_true_datae(data_fragment):
     assert data_fragment
 
+
 @pytest.mark.bool
 def test_datarep_with_false_data(empty_datarep):
     assert not empty_datarep
 
+
 @pytest.mark.bool
 def test_fragment_with_false_data(false_fragment):
     assert not false_fragment
+
 
 @pytest.mark.bool
 def test_datarep_failed_false(failed_datarep):
@@ -546,11 +604,13 @@ def test_datarep_failed_false(failed_datarep):
         bool(failed_datarep)
     assert failed_datarep._data is datarep.DataRep.FAIL
 
+
 @pytest.mark.bool
 def test_fragment_failed_false(failed_fragment):
     with pytest.raises(DataPullError):
         bool(failed_fragment)
     assert failed_fragment.root._data is datarep.DataRep.FAIL
+
 
 @pytest.mark.bool
 def test_datarep_deleted_data_false(deleted_datarep):
@@ -558,13 +618,16 @@ def test_datarep_deleted_data_false(deleted_datarep):
         bool(deleted_datarep)
     assert deleted_datarep._data is datarep.DataRep.DELETED
 
+
 @pytest.mark.bool
 def test_fragment_deleted_data_false(deleted_fragment):
     with pytest.raises(DataPullError):
         bool(deleted_fragment)
     assert deleted_fragment.root._data is datarep.DataRep.DELETED
 
+
 # ================= URL parameters ==========================================
+
 def test_apply_params(data_datarep):
     # Pull to ensure that we have data that is not propagated.
     data_datarep.pull()
@@ -587,9 +650,11 @@ def test_apply_params(data_datarep):
     assert no_params.params is None
     assert other_params._data is datarep.DataRep.UNSET
 
+
 def test_apply_params_to_fragment(data_fragment):
     with pytest.raises(NotImplementedError):
         data_fragment.apply_params()
+
 
 # ================= data, push, pull ========================================
 
@@ -633,7 +698,6 @@ def test_datarep_with_params_data_setter(mock_service, mock_jsonschema):
 
 def test_datarep_data_setter_fragment(mock_service):
     root_data = copy.deepcopy(ANY_DATA)
-    fragment_data = copy.deepcopy(ANY_DATA)
     root = datarep.DataRep(mock_service, ANY_URI, ANY_DATA_SCHEMA,
                            data=root_data)
     fragment = datarep.DataRep(root=root, fragment=ANY_FRAGMENT_PTR)
@@ -653,7 +717,6 @@ def test_datarep_data_setter_fragment(mock_service):
 
 def test_datarep_push_fragment(mock_service):
     root_data = copy.deepcopy(ANY_DATA)
-    fragment_data = copy.deepcopy(ANY_DATA)
     root = datarep.DataRep(mock_service, ANY_URI, ANY_DATA_SCHEMA,
                            data=root_data)
     fragment = datarep.DataRep(root=root, fragment=ANY_FRAGMENT_PTR)
@@ -778,7 +841,7 @@ def test_datarep_object_iterkeys(any_datarep_with_object_data):
 def test_datarep_object_keys(any_datarep_with_object_data):
     drod = any_datarep_with_object_data
     assert drod.keys() == drod.data.keys()
-    
+
 
 def test_datarep_object_itervalues(any_datarep_with_object_data):
     drod = any_datarep_with_object_data

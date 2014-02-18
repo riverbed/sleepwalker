@@ -1,13 +1,14 @@
-# Copyright (c) 2013 Riverbed Technology, Inc.
+# Copyright (c) 2013-2014 Riverbed Technology, Inc.
 #
 # This software is licensed under the terms and conditions of the
 # MIT License set forth at:
-#   https://github.com/riverbed/flyscript-portal/blob/master/LICENSE ("License").
+#   https://github.com/riverbed/sleepwalker/blob/master/LICENSE ("License").
 # This software is distributed "AS IS" as set forth in the License.
 
 # NOTE: If any imports are made in this module, please add an
 # __all__ = []
 # definition as __init__.py does a from .exceptions import *.
+
 
 #
 # General exception and base class
@@ -19,7 +20,7 @@ class SleepwalkerException(Exception):
 #
 # Service Exceptions
 #
-class ServiceException(SleepwalkerException): 
+class ServiceException(SleepwalkerException):
     """ Sleepwalker Service error. """
 
 
@@ -27,11 +28,11 @@ class MissingServiceDef(ServiceException):
     """ An error occurred when trying to access the service definition. """
 
 
-class ResourceException(ServiceException): 
+class ResourceException(ServiceException):
     """ An error occurred with a Resource. """
 
 
-class TypeException(ServiceException): 
+class TypeException(ServiceException):
     """ An error occurred with a Type. """
 
 
@@ -42,24 +43,25 @@ class MissingVariable(SleepwalkerException):
     """ URI template missing one or more variables. """
 
 
-class InvalidParameter(SleepwalkerException): 
+class InvalidParameter(SleepwalkerException):
     """ URI template found an invalid parameter. """
 
 
-class RelationError(SleepwalkerException): 
+class RelationError(SleepwalkerException):
     """ Raised if invalid relation called on Resource. """
 
 
-class LinkError(SleepwalkerException): 
+class LinkError(SleepwalkerException):
     """ Raised if invalid link called on Resource. """
 
 
-class DataPullError(SleepwalkerException): 
+class DataPullError(SleepwalkerException):
     """ Raised if an attempt to pull data failed. """
 
 
 class DataNotSetError(SleepwalkerException):
     """ Raised if an attempt to push data when not set. """
+
 
 class FragmentError(SleepwalkerException):
     """ Raised if fragment settings are inconsistent. """
@@ -67,12 +69,13 @@ class FragmentError(SleepwalkerException):
 #
 # Connection related exceptions
 #
-class ConnectionError(SleepwalkerException): 
+class ConnectionError(SleepwalkerException):
     """ A connection error occurred. """
 
 
-class URLError(ConnectionError): 
+class URLError(ConnectionError):
     """ An error occurred when building a URL. """
+
 
 #
 # Request/Response related exceptions

@@ -1,29 +1,22 @@
-# Copyright (c) 2013 Riverbed Technology, Inc.
+# Copyright (c) 2013-2014 Riverbed Technology, Inc.
 #
 # This software is licensed under the terms and conditions of the
 # MIT License set forth at:
-#   https://github.com/riverbed/flyscript-portal/blob/master/LICENSE ("License").
+#   https://github.com/riverbed/sleepwalker/blob/master/LICENSE ("License").
 # This software is distributed "AS IS" as set forth in the License.
 
 import os
-import re
-import string
 import logging
 import unittest
-import copy
-
-import uritemplate
-from reschema.jsonschema import Ref
 
 from sleepwalker.service import Service
-from sleepwalker.datarep import DataRep
-from sleepwalker.connection import Connection
-
 from sim_connection import SimConnection
+from service_loader import SERVICE_DEF_CACHE
 
 logger = logging.getLogger(__name__)
 
 TEST_PATH = os.path.abspath(os.path.dirname(__file__))
+
 
 class CatalogConnection(SimConnection):
     def __init__(self, test=None):
@@ -37,7 +30,7 @@ class CatalogConnection(SimConnection):
         for v in self._collections['books'].values():
             add = True
             if params:
-                for p,pv in params.iteritems():
+                for p, pv in params.iteritems():
                     if p == 'author' and pv not in v['author_ids']:
                         add = False
                         break
@@ -46,15 +39,18 @@ class CatalogConnection(SimConnection):
         return result
 
     def book_links_purchase(self, link, method, uri, data, params, headers):
-        response = {'delivery_date' : 'Oct 1', 'final_cost': data['num_copies'] * 12.99}
+        response = {'delivery_date': 'Oct 1',
+                    'final_cost': data['num_copies'] * 12.99}
         return response
-        
+
+
 class CatalogTest(unittest.TestCase):
     def setUp(self):
-        self.service = Service()
-        self.service.load_servicedef(os.path.join(TEST_PATH, "Catalog.yml"))
-        self.service.connection = CatalogConnection(self)
-        self.service.connection.add_servicedef(self.service.servicedef)
+        id_ = 'http://support.riverbed.com/apis/catalog/1.0'
+        conn = CatalogConnection(self)
+        self.service = Service.init_by_id(SERVICE_DEF_CACHE,
+                                          id_, connection=conn)
+        conn.add_service(self.service)
 
     def test_catalog(self):
         authors = self.service.bind('authors')
@@ -63,13 +59,16 @@ class CatalogTest(unittest.TestCase):
 
         books = self.service.bind('books')
         for i in range(3):
-            books.create({'title': 'Harry - book %d' % i, 'author_ids': [harry.data['id']]})
+            books.create({'title': 'Harry - book %d' % i,
+                          'author_ids': [harry.data['id']]})
 
         for i in range(4):
-            books.create({'title': 'Fred - book %d' % i, 'author_ids': [fred.data['id']]})
+            books.create({'title': 'Fred - book %d' % i,
+                          'author_ids': [fred.data['id']]})
 
         for i in range(2):
-            books.create({'title': 'Harry and Fred - book %d' % i, 'author_ids': [harry.data['id'], fred.data['id']]})
+            books.create({'title': 'Harry and Fred - book %d' % i,
+                          'author_ids': [harry.data['id'], fred.data['id']]})
 
         books.pull()
         firstbook = books[0].follow('full')
@@ -79,7 +78,7 @@ class CatalogTest(unittest.TestCase):
 
         books.pull()
         self.assertEqual(len(books.data), 9)
-        
+
         harrys_books = harry.follow('books')
         self.assertEqual(len(harrys_books.data), 5)
 

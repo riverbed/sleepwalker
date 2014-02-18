@@ -1,8 +1,8 @@
-# Copyright (c) 2013 Riverbed Technology, Inc.
+# Copyright (c) 2013-20142 Riverbed Technology, Inc.
 #
 # This software is licensed under the terms and conditions of the
 # MIT License set forth at:
-#   https://github.com/riverbed/flyscript-portal/blob/master/LICENSE ("License").
+#   https://github.com/riverbed/sleepwalker/blob/master/LICENSE ("License").
 # This software is distributed "AS IS" as set forth in the License.
 
 import ssl
@@ -16,7 +16,7 @@ from requests.structures import CaseInsensitiveDict
 from requests.packages.urllib3.util import parse_url
 from requests.packages.urllib3.poolmanager import PoolManager
 
-from .exceptions import ConnectionError, URLError, HTTPError
+from .exceptions import URLError, HTTPError
 
 
 class SSLAdapter(HTTPAdapter):
@@ -62,7 +62,8 @@ class Connection(object):
         """
         p = parse_url(hostname)
         if not p.scheme:
-            raise URLError('Scheme must be provided (e.g. https:// or http://).')
+            raise URLError('Scheme must be provided (e.g. https:// '
+                           'or http://).')
         else:
             if p.port and port and p.port != port:
                 raise URLError('Mismatched ports provided.')
@@ -84,14 +85,17 @@ class Connection(object):
         # TODO make this a prepend_if_needed type method
         return urlparse.urljoin(self.hostname, uri)
 
-    def _request(self, method, uri, body=None, params=None, extra_headers=None):
+    def _request(self, method, uri, body=None, params=None,
+                 extra_headers=None):
         p = parse_url(uri)
         if not p.host:
             uri = self.get_url(uri)
 
         try:
-            r = self.conn.request(method, uri, data=body, params=params, headers=extra_headers)
-        except (requests.exceptions.SSLError, requests.exceptions.ConnectionError):
+            r = self.conn.request(method, uri, data=body, params=params,
+                                  headers=extra_headers)
+        except (requests.exceptions.SSLError,
+                requests.exceptions.ConnectionError):
             if self._ssladapter:
                 # If we've already applied an adapter, this is another problem
                 raise
@@ -99,7 +103,8 @@ class Connection(object):
             # Otherwise, mount adapter and retry the request
             self.conn.mount('https://', SSLAdapter(ssl.PROTOCOL_TLSv1))
             self._ssladapter = True
-            r = self.conn.request(method, uri, data=body, params=params, headers=extra_headers)
+            r = self.conn.request(method, uri, data=body, params=params,
+                                  headers=extra_headers)
 
         self.response = r
 
@@ -121,7 +126,8 @@ class Connection(object):
                     res = obj.__dict__
             return res
 
-    def json_request(self, method, uri, body=None, params=None, extra_headers=None):
+    def json_request(self, method, uri, body=None, params=None,
+                     extra_headers=None):
         """ Send a JSON request and receive JSON response. """
         if extra_headers:
             extra_headers = CaseInsensitiveDict(extra_headers)

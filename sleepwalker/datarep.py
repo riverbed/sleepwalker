@@ -1,8 +1,8 @@
-# Copyright (c) 2013 Riverbed Technology, Inc.
+# Copyright (c) 2013-2014 Riverbed Technology, Inc.
 #
 # This software is licensed under the terms and conditions of the
 # MIT License set forth at:
-#   https://github.com/riverbed/flyscript-portal/blob/master/LICENSE ("License").
+#   https://github.com/riverbed/sleepwalker/blob/master/LICENSE ("License").
 # This software is distributed "AS IS" as set forth in the License.
 
 """
@@ -40,7 +40,8 @@ A common read-modify-write cycle is shown below::
 
    # Examine the data retrieved
    >>> book.data
-   { 'id': 1, 'title': 'My first book', 'author_ids': [1, 9], 'publisher_id': 3 }
+   { 'id': 1, 'title': 'My first book',
+     'author_ids': [1, 9], 'publisher_id': 3 }
 
    # Change the data
    >>> book.data['title'] = 'My First Book - Using Python'
@@ -101,7 +102,8 @@ Using a `DataRep` instance for this book, this is accomplished via the
    >>> request = {'num_copies': 100, 'shipping_address': '123 Street, Boston' }
    >>> response = book.execute('purchase', request)
    >>> response
-   <DataRep '/api/catalog/1.0/books/1/purchase' type:book.links.purchase.response>
+   <DataRep '/api/catalog/1.0/books/1/purchase'
+       type:book.links.purchase.response>
 
    >>> response.data
    { 'delivery_date': 'Oct 1', 'final_cost': 129.90 }
@@ -158,7 +160,8 @@ a single resource.  Consider the `book` example from above::
 
    >>> book
    >>> book.data
-   { 'id': 1, 'title': 'My first book', 'author_ids': [1, 9], 'publisher_id': 3 }
+   { 'id': 1, 'title': 'My first book',
+     'author_ids': [1, 9], 'publisher_id': 3 }
 
    >>> book.data['author_ids']
    [1, 9]
@@ -221,7 +224,8 @@ created:
    [1, 9]
 
    >>> book_author_ids_0 = book_author_ids[0]
-   <DataRep '/api/catalog/1.0/books/1#/author_ids/0' type:book.author_ids[author_id]>
+   <DataRep '/api/catalog/1.0/books/1#/author_ids/0'
+       type:book.author_ids[author_id]>
 
    >>> book_author_ids_0.relations.keys()
    ['full']
@@ -239,7 +243,7 @@ import copy
 import logging
 import uritemplate
 
-from jsonpointer import resolve_pointer, set_pointer, JsonPointer
+from jsonpointer import resolve_pointer, set_pointer
 import reschema.jsonschema
 
 from .exceptions import (MissingVariable, InvalidParameter, RelationError,
@@ -250,6 +254,7 @@ logger = logging.getLogger(__name__)
 
 VALIDATE_REQUEST = True
 VALIDATE_RESPONSE = False
+
 
 class Schema(object):
     """ A Schema object represents the jsonschema for a resource or type.
@@ -277,7 +282,8 @@ class Schema(object):
     """
 
     def __init__(self, service, jsonschema):
-        """ Create a Schema bound to the given service as defined by jsonschema.
+        """ Create a Schema bound to service as defined by jsonschema.
+
         :type service: sleepwalker.service.Service
         :type jsonschema: reschema.jsonschema.Schema subclass
         """
@@ -317,8 +323,9 @@ class Schema(object):
         for var in uritemplate.variables(selflink.path.template):
             if var not in kwargs:
                 raise MissingVariable(
-                  'No value provided for variable "%s" in self template: %s' %
-                  (var, selflink.path.template))
+                    'No value provided for variable "%s" '
+                    'in self template: %s' %
+                    (var, selflink.path.template))
 
             variables[var] = kwargs[var]
 
@@ -328,10 +335,10 @@ class Schema(object):
                 params[var] = kwargs[var]
             elif var not in variables:
                 raise InvalidParameter(
-                  'Invalid parameter "%s" for self template: %s' %
-                  (var, selflink.path.template))
+                    'Invalid parameter "%s" for self template: %s' %
+                    (var, selflink.path.template))
 
-        uri = selflink.path.resolve(variables)
+        uri = selflink.path.resolve(self.service.servicepath, variables)
         return DataRep.from_schema(self.service, uri,
                                    jsonschema=self.jsonschema, params=params)
 
@@ -362,7 +369,7 @@ class DataRep(object):
 
     @classmethod
     def from_schema(cls, service=None, uri=None, jsonschema=None,
-                         root=None, fragment='', **kwargs):
+                    root=None, fragment='', **kwargs):
         """ Create the appropriate type of DataRep based on json-schema type
 
         This factory method instantiates the right kind of DataRep depending
@@ -373,7 +380,7 @@ class DataRep(object):
         """
         if jsonschema is None and None in (root, fragment):
             raise TypeError(
-              "Either jsonschema or root and fragment must be passed.")
+                "Either jsonschema or root and fragment must be passed.")
 
         js = jsonschema if jsonschema else root.jsonschema.by_pointer(fragment)
 
@@ -398,8 +405,8 @@ class DataRep(object):
                        root=root, fragment=fragment, **kwargs)
 
     def __init__(self, service=None, uri=None, jsonschema=None,
-                       fragment='', root=None,
-                       data=UNSET, params=None):
+                 fragment='', root=None,
+                 data=UNSET, params=None):
         """ Creata a new DataRep object associated with the resource at `uri`.
 
         :param service: the service of which this resource is a part.
@@ -410,9 +417,10 @@ class DataRep(object):
             is inherited from the root.
         :type uri: string
 
-        :param jsonschema: a jsonschema.Schema derivative that describes the
-            structure of the data at this uri.  If `fragment` and `root` are
-            passed, this must be None, as the schema is inherited from the root.
+        :param jsonschema: a jsonschema.Schema derivative that
+            describes the structure of the data at this uri.  If
+            `fragment` and `root` are passed, this must be None, as
+            the schema is inherited from the root.
         :type jsonschema: reschema.jsonschema.Schema subclass
 
         :param fragment: an optional JSON pointer creating a DataRep for
@@ -449,10 +457,10 @@ class DataRep(object):
                 raise FragmentError("Must supply fragment with root")
 
             if (service or uri or jsonschema or params or
-                data is not DataRep.UNSET):
+                    data is not DataRep.UNSET):
                 raise FragmentError(
-                  "'fragment' and 'root' are the only valid arguments "
-                  "when instantiating a fragment.")
+                    "'fragment' and 'root' are the only valid arguments "
+                    "when instantiating a fragment.")
             self._data = DataRep.FRAGMENT
             self.jsonschema = root.jsonschema.by_pointer(fragment)
             self.service = root.service
@@ -461,7 +469,7 @@ class DataRep(object):
 
         elif not (service and uri and jsonschema):
             raise TypeError(
-              "service, uri and jsonschema are required parameters")
+                "service, uri and jsonschema are required parameters")
         else:
             # This is a root resource, and therefore owns the data directly.
             self._data = data
@@ -479,8 +487,8 @@ class DataRep(object):
             resp = l.response
             if (not self.jsonschema.matches(resp)):
                 self._getlink = (
-                  "'get' link response does not match: %s vs %s" %
-                  (resp, self.jsonschema))
+                    "'get' link response does not match: %s vs %s" %
+                    (resp, self.jsonschema))
         else:
             self._getlink = "No 'get' link for this resource"
 
@@ -511,7 +519,7 @@ class DataRep(object):
             resp = l.response
             if (not req.matches(resp)):
                 self._createlink = (
-                  "'create' link request does not match the response")
+                    "'create' link request does not match the response")
         else:
             self._createlink = "No 'create' link for this resource"
 
@@ -522,7 +530,6 @@ class DataRep(object):
         elif 'delete' not in self.links:
             self._deletelink = "No 'delete' link for this resource"
 
-
     def __repr__(self):
         s = "DataRep '%s" % self.uri
         if self.fragment:
@@ -531,7 +538,7 @@ class DataRep(object):
         if self.params is not None:
             s += (" params:" +
                   ','.join(["%s=%s" % (key, value)
-                            for (key,value) in self.params.iteritems()]))
+                            for (key, value) in self.params.iteritems()]))
         if self.jsonschema:
             s = s + ' type:' + self.jsonschema.fullname()
         return '<' + s + '>'
@@ -634,6 +641,7 @@ class DataRep(object):
     @data.setter
     def data(self, value):
         """ Modify the data associated for this resource.
+
         Note that while a root DataRep can be set without triggering a pull,
         setting a fragment requires accessing the fragment's root.data.
         """
@@ -645,7 +653,7 @@ class DataRep(object):
             self._data = value
 
     def pull(self):
-        """ Retrieve a copy of the data representation for this resource from the server.
+        """ Update the data representation from the server.
 
         This relies on the schema 'get' link.  This will always
         perform an interaction with the server to refresh the
@@ -665,7 +673,6 @@ class DataRep(object):
         response = self._request('GET', self.uri, params=self.params)
         self._data = response
         return self
-
 
     def push(self, obj=UNSET):
         """ Modify the data representation for this resource from the server.
@@ -703,6 +710,10 @@ class DataRep(object):
         if self._setlink is not True:
             raise LinkError(self._setlink)
 
+        if self.params is not None:
+            raise LinkError(
+                "push not allowed, DataRep with parameters is readonly")
+
         if obj is not DataRep.UNSET:
             self._data = obj
 
@@ -716,7 +727,6 @@ class DataRep(object):
         self._data = response
 
         return self
-
 
     def create(self, obj):
         """ Create a new instance of a resource in a collection.
@@ -738,11 +748,13 @@ class DataRep(object):
 
         response = self._request('POST', self.uri, obj)
         logger.debug("create response: %s" % response)
-        uri = link.response.links['self'].path.resolve(response)
+        uri = (link.response
+               .links['self']
+               .path
+               .resolve(self.service.servicepath, response))
 
         return DataRep.from_schema(self.service, uri, jsonschema=link.response,
                                    data=response)
-
 
     def delete(self):
         """ Issue a delete for this resource.
@@ -768,7 +780,6 @@ class DataRep(object):
         self._request('DELETE', self.uri)
         self._data = DataRep.DELETED
         return self
-
 
     def _resolve_path(self, path, **kwargs):
         """ Internal method to fill in path variables from data and kwargs. """
@@ -802,8 +813,7 @@ class DataRep(object):
         if path is None:
             path = self.links['self'].path
 
-        return path.resolve(variables)
-
+        return path.resolve(self.service.servicepath, variables)
 
     def follow(self, _name, **kwargs):
         """ Follow a relation by name.
@@ -826,8 +836,9 @@ class DataRep(object):
             fulldata = self.root.data if self.fragment else self.data
         else:
             fulldata = None
-        (uri, params) = relation.resolve(fulldata, self.fragment,
-                                         params=kwargs)
+
+        (uri, params) = relation.resolve(self.service.servicepath, fulldata,
+                                         self.fragment, params=kwargs)
 
         return DataRep.from_schema(self.service, uri,
                                    jsonschema=relation.resource,
@@ -853,8 +864,8 @@ class DataRep(object):
 
         if method is None:
             raise LinkError(
-              "%s: Unable to follow link '%s', no method defined" %
-              (self, _name))
+                "%s: Unable to follow link '%s', no method defined" %
+                (self, _name))
 
         if VALIDATE_REQUEST and request_sch is not None:
             # Validate the request
@@ -907,6 +918,7 @@ class DataRep(object):
                                                 data=e.json_data)
             raise
 
+
 class ContainerDataRep(DataRep):
     """ An intermediate class for common container implementations.
 
@@ -930,6 +942,7 @@ class ContainerDataRep(DataRep):
 
     def __len__(self):
         return len(self.data)
+
 
 class DictDataRep(ContainerDataRep):
     """ A DataRep for a JSON object resource as a Python dict
@@ -974,7 +987,7 @@ class DictDataRep(ContainerDataRep):
         """
         if key not in self.data:
             raise KeyError(key)
-            
+
         new_root = self if self.root is None else self.root
         return DataRep.from_schema(fragment=self.fragment + '/' + str(key),
                                    root=new_root)
@@ -1007,6 +1020,7 @@ class DictDataRep(ContainerDataRep):
     def get(self, key, default):
         # TODO: Coming back to this in a separate commit.
         raise NotImplementedError
+
 
 class ListDataRep(ContainerDataRep):
     """ A DataRep for a JSON array resource as a Python list
@@ -1078,7 +1092,7 @@ class ListDataRep(ContainerDataRep):
         ptr_index = forward_index(index)
         new_root = self if self.root is None else self.root
         return DataRep.from_schema(
-          fragment=self.fragment + '/' + str(ptr_index), root=new_root)
+            fragment=self.fragment + '/' + str(ptr_index), root=new_root)
 
     def __iter__(self):
         return ListDataRep.Iterator(self)

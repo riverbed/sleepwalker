@@ -1,8 +1,9 @@
-$schema: "service_def/2.0"
+$schema: "http://support.riverbed.com/apis/service_def/2.1"
+id: "http://support.riverbed.com/apis/basic/1.0"
+provider: "riverbed"
 name: "basic"
 version: "1.0"
 title: "REST API for a book catalog"
-servicePath: "/api/basic/1.0"
 
 types:
    t:
@@ -10,39 +11,39 @@ types:
       properties:
          t1: { type: number }
          t2: { type: string }
-      
+
 resources:
    x:
       type: number
       example: 5
       links:
          self: { path: '$/x' }
-         get: 
+         get:
             method: GET
-            response: { $ref: x }
-         set: 
+            response: { $ref: '#/resources/x' }
+         set:
             method: PUT
-            request: { $ref: x }
-            response: { $ref: x }
+            request: { $ref: '#/resources/x' }
+            response: { $ref: '#/resources/x' }
 
-         action: 
+         action:
             method: POST
             request:
                type: number
-            response: 
+            response:
                type: number
             path: '$/x/action'
-            
-         action2: 
+
+         action2:
             method: GET
-            response: { $ref: t }
+            response: { $ref: '#/types/t' }
             path: '$/x/action2'
 
    button:
       type: 'null'
       relations:
          x:
-            resource: x
+            resource: '#/resources/x'
       links:
          self:
             path: '$/button'
@@ -59,11 +60,11 @@ resources:
 
    items:
       type: array
-      items: 
+      items:
          type: number
          relations:
             item:
-               resource: item
+               resource: '#/resources/item'
                vars: { id: '0' }
 
       links:
@@ -77,12 +78,12 @@ resources:
 
          get:
             method: GET
-            response: { $ref: items }
+            response: { $ref: '#/resources/items' }
 
          create:
             method: POST
-            request: { $ref: item }
-            response: { $ref: item }
+            request: { $ref: '#/resources/item' }
+            response: { $ref: '#/resources/item' }
 
    item:
       type: object
@@ -96,23 +97,23 @@ resources:
          self: { path: '$/items/{id}' }
          get:
             method: GET
-            response: { $ref: item }
+            response: { $ref: '#/resources/item' }
 
          set:
             method: PUT
-            request: { $ref: item }
-            response: { $ref: item }
+            request: { $ref: '#/resources/item' }
+            response: { $ref: '#/resources/item' }
 
          delete:
             method: DELETE
 
    categories:
       type: array
-      items: 
+      items:
          type: number
          relations:
             category:
-               resource: category
+               resource: '#/resources/category'
                vars: { id: '0' }
 
       links:
@@ -122,12 +123,12 @@ resources:
                label: { type: string }
          get:
             method: GET
-            response: { $ref: categories }
+            response: { $ref: '#/resources/categories' }
 
          create:
             method: POST
-            request: { $ref: category }
-            response: { $ref: category }
+            request: { $ref: '#/resources/category' }
+            response: { $ref: '#/resources/category' }
 
    category:
       type: object
@@ -139,12 +140,12 @@ resources:
          self: { path: '$/categories/{id}' }
          get:
             method: GET
-            response: { $ref: category }
+            response: { $ref: '#/resources/category' }
 
          set:
             method: PUT
-            request: { $ref: category }
-            response: { $ref: category }
+            request: { $ref: '#/resources/category' }
+            response: { $ref: '#/resources/category' }
 
          purchase:
             method: POST
@@ -152,5 +153,5 @@ resources:
 
       relations:
          items:
-            resource: items
+            resource: '#/resources/items'
             vars: { category: '0/id' }
