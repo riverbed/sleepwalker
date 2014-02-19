@@ -81,7 +81,7 @@ class BasicTest(unittest.TestCase):
     def setUp(self):
         conn = BasicConnection(self)
         id_ = 'http://support.riverbed.com/apis/basic/1.0'
-        self.service = Service.init_by_id(SERVICE_DEF_CACHE,
+        self.service = Service.create_by_id(SERVICE_DEF_CACHE,
                                           id_, connection=conn)
         conn.add_service(self.service)
 

@@ -22,6 +22,10 @@ NON_DEFAULT_VERIFY = False
 
 ANY_BIND_KWARGS = {'foo': 'bar', 'x': 1}
 
+ANY_ID = 'http://support.riverbed.com/apis/test/1.0'
+ANY_NAME = 'test'
+ANY_VERSION = '1.0'
+
 ANY_SCHEMA_FILENAME = 'any_schema.yml'
 ANY_TYPE_NAME = 'any_type_name'
 ANY_RESOURCE_NAME = 'any_resource_name'
@@ -36,6 +40,9 @@ ANY_RESOURCE_LOOKUP_EXCEPTION = ResourceException
 def any_service():
     with mock.patch('reschema.servicedef.ServiceDef') as patched:
         mock_servicedef = patched.return_value
+        mock_servicedef.id = ANY_ID
+        mock_servicedef.name = ANY_NAME
+        mock_servicedef.version = ANY_VERSION
     return service.Service(mock_servicedef)
 
 

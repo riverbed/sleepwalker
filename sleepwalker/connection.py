@@ -1,4 +1,4 @@
-# Copyright (c) 2013-20142 Riverbed Technology, Inc.
+# Copyright (c) 2013-2014 Riverbed Technology, Inc.
 #
 # This software is licensed under the terms and conditions of the
 # MIT License set forth at:

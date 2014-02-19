@@ -30,7 +30,7 @@ class Service(object):
 
     # Default api root for servicepath when not provided
     # by the user
-    default_root = '/api'
+    DEFAULT_ROOT = '/api'
 
     def __init__(self, servicedef, instance=None,
                  servicepath=None, connection=None):
@@ -52,22 +52,21 @@ class Service(object):
         self.servicedef = servicedef
         self.instance = instance
         if servicepath is None:
-            if instance is None:
-                servicepath = ('%s/%s/%s' % (Service.default_root,
-                                             servicedef.name,
-                                             servicedef.version))
-            else:
-                servicepath = ('%s/%s/%s/%s' % (Service.default_root,
-                                                instance,
-                                                servicedef.name,
-                                                servicedef.version))
+            # Default service path is built by joining
+            # root, instance (if not null), name and version
+            paths = [p for p in [Service.DEFAULT_ROOT,
+                                 instance,
+                                 servicedef.name,
+                                 servicedef.version] if p is not None]
+
+            servicepath = '/'.join(paths)
 
         self.servicepath = servicepath
         self.connection = connection
         self.headers = {}
 
     @classmethod
-    def init_by_id(cls, cache, service_id, **kwargs):
+    def create_by_id(cls, cache, service_id, **kwargs):
         """ Create a Service object by service id.
 
         :param cache: cache to use to lookup the service definition
@@ -79,7 +78,7 @@ class Service(object):
         return Service(servicedef, **kwargs)
 
     @classmethod
-    def init_by_name(cls, cache, name, version, provider='riverbed', **kwargs):
+    def create_by_name(cls, cache, name, version, provider='riverbed', **kwargs):
         """ Create a Service object by service <name,version,provider>
 
         :param cache: cache to use to lookup the service definition

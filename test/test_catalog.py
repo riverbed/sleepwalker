@@ -48,7 +48,7 @@ class CatalogTest(unittest.TestCase):
     def setUp(self):
         id_ = 'http://support.riverbed.com/apis/catalog/1.0'
         conn = CatalogConnection(self)
-        self.service = Service.init_by_id(SERVICE_DEF_CACHE,
+        self.service = Service.create_by_id(SERVICE_DEF_CACHE,
                                           id_, connection=conn)
         conn.add_service(self.service)
 
