@@ -687,8 +687,7 @@ class DataRep(object):
             to push to the server.
         :raises DataPullError: if the data needed to be pulled in order
             to be modified and pushed, but the pull failed.
-        :raises LinkError: if no set link is present to which to push,
-            or if this is a parameterized resource, which cannot be pushed.
+        :raises LinkError: if no set link is present to which to push.
         :raises ValidationError: if validation was requested and the
             value to be pushed fails validation.
         """
@@ -703,10 +702,6 @@ class DataRep(object):
 
         if self._setlink is not True:
             raise LinkError(self._setlink)
-
-        if self.params is not None:
-            raise LinkError(
-              "push not allowed, DataRep with parameters is readonly")
 
         if obj is not DataRep.UNSET:
             self._data = obj
