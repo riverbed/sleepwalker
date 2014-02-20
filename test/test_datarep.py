@@ -16,7 +16,7 @@ import pytest
 from jsonpointer import resolve_pointer, set_pointer
 
 import reschema.jsonschema
-from reschema import restschema
+from reschema import servicedef
 from sleepwalker import service, datarep
 from sleepwalker.exceptions import (LinkError, InvalidParameter,
                                     MissingVariable, RelationError,
@@ -65,12 +65,13 @@ ANY_DATA_SCHEMA_DICT = {
     'links': {'self': {'path': '$/anything'}},
 }
 
-ANY_SERVICE_DEF = {
-    'restSchemaVersion': '2.0',
+ANY_SERVICE_DEF_TEXT = {
+    '$schema': 'http://support.riverbed.com/apis/service_def/2.1',
+    'id': 'http://support.riverbed.com/apis/unittest/1.0',
+    'provider': 'riverbed',
     'name': 'unittest',
     'version': '1.0',
     'title': 'API for use in unit tests',
-    'servicePath': '/api/unitest/1.0',
     'defaultAuthorization': 'none',
     'resources': {
         'referenced': {
@@ -81,21 +82,21 @@ ANY_SERVICE_DEF = {
             'links': {
                 'self': {'path': '$/whatever'},
                 'get': {
-                    'request': {'$ref': 'referenced'},
-                    'response': {'$ref': 'referenced'},
+                    'request': {'$ref': '#/resources/referenced'},
+                    'response': {'$ref': '#/resources/referenced'},
                 },
             },
         },
         'referencing': {
             'type': 'object',
             'properties': {
-                'reference': {'$ref': 'referenced'},
+                'reference': {'$ref': '#/resources/referenced'},
             },
             'links': {
                 'self': {'path': '$/notimportant'},
                 'get': {
-                    'request': {'$ref': 'referenced'},
-                    'response': {'$ref': 'referenced'},
+                    'request': {'$ref': '#/resources/referenced'},
+                    'response': {'$ref': '#/resources/referenced'},
                 },
             },
         },
@@ -109,7 +110,7 @@ ANY_SERVICE_DATA = {
 
 # jsonschema.Schema instances are too much effort to mock.
 ANY_SERVICE_DEF = reschema.ServiceDef()
-ANY_SERVICE_DEF.id = 'http://support.riverbed.com/api/anyservice/1.0'
+ANY_SERVICE_DEF.parse(ANY_SERVICE_DEF_TEXT)
 ANY_DATA_SCHEMA = reschema.jsonschema.Schema.parse(input=ANY_DATA_SCHEMA_DICT,
                                                    name='any',
                                                    servicedef=ANY_SERVICE_DEF)
@@ -135,8 +136,7 @@ ANY_ITEM_PARAMS = {'timezone': 'PST'}
 
 @pytest.fixture
 def ref_pair_datareps(mock_service):
-    rs = restschema.RestSchema()
-    rs.parse(ANY_SERVICE_DEF)
+    rs = ANY_SERVICE_DEF
 
     pair = namedtuple('referenced', 'referencing')
     pair.referenced = datarep.DataRep.from_schema(
@@ -892,7 +892,7 @@ def test_datarep_array___iter__(any_datarep_fragment_with_array_data):
 
 
 def test_exception():
-    s = service.Service()
+    s = service.Service(ANY_SERVICE_DEF)
     dr = datarep.DataRep.from_schema(s, uri=ANY_URI,
                                      jsonschema=ANY_DATA_SCHEMA)
     dr._getlink = True

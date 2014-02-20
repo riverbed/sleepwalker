@@ -296,7 +296,7 @@ class Schema(object):
             selflink = self.jsonschema.links['self']
             uri = selflink.path.template
             if uri[0] == '$':
-                uri = selflink.api + uri[1:]
+                uri = self.service.servicepath + uri[1:]
             s = s + " '" + uri + "'"
         s = s + ' type:' + self.jsonschema.fullname()
         return '<' + s + '>'
@@ -903,15 +903,15 @@ class DataRep(object):
             if e.json_data is not None:
                 # TODO: Work out correct schemas.  Until then,
                 #       accept everything.
-                api = None
+                servicedef = None
                 parent = self.jsonschema.parent
                 if parent is None:
-                    api = self.jsonschema.api
+                    servicedef = self.jsonschema.servicedef
                 all_schema = reschema.jsonschema.Schema.parse(
                     {'type': 'object'},
                     name='httperror',
                     parent=parent,
-                    api=api)
+                    servicedef = servicedef)
                 e.datarep = DataRep.from_schema(service=self.service,
                                                 uri=uri,
                                                 jsonschema=all_schema,
