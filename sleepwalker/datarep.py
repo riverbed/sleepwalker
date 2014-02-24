@@ -29,8 +29,8 @@ from the server via `pull()` and a the server is updated via `push()`.
 
 A common read-modify-write cycle is shown below::
 
-   >>> catalog = Service()
-   >>> catalog.load_servicedef('examples/Catalog.yml')
+   >>> catalog_def = ServiceDef.create_from_file('catalog.yml')
+   >>> catalog = Service(catalog_def)
    >>> book = catalog.bind('book', id=1)
    >>> book
    <DataRep '/api/catalog/1.0/book' type book>

@@ -14,7 +14,7 @@ from sleepwalker.datarep import DataRep
 from sleepwalker.exceptions import DataPullError
 
 from sim_connection import SimConnection
-from service_loader import SERVICE_DEF_CACHE
+from service_loader import SERVICE_DEF_MANAGER
 
 logger = logging.getLogger(__name__)
 
@@ -81,7 +81,7 @@ class BasicTest(unittest.TestCase):
     def setUp(self):
         conn = BasicConnection(self)
         id_ = 'http://support.riverbed.com/apis/basic/1.0'
-        self.service = Service.create_by_id(SERVICE_DEF_CACHE,
+        self.service = Service.create_by_id(SERVICE_DEF_MANAGER,
                                           id_, connection=conn)
         conn.add_service(self.service)
 

@@ -13,9 +13,9 @@ execute links and follow relations.
 
 Typical usage::
 
-   >>> catalog = Service()
+   >>> catalog_def = ServiceDef.create_from_file('catalog.yml')
+   >>> catalog = Service(catalog_def)
    >>> catalog.add_connection('restserver.com')
-   >>> catalog.load_servicedef('examples/catalog.yml')
    >>> book = catalog.bind('book', id=1)
 
 """
@@ -66,29 +66,30 @@ class Service(object):
         self.headers = {}
 
     @classmethod
-    def create_by_id(cls, cache, service_id, **kwargs):
+    def create_by_id(cls, manager, service_id, **kwargs):
         """ Create a Service object by service id.
 
-        :param cache: cache to use to lookup the service definition
+        :param manager: used to lookup/load the service definition
         :param str service_id: fully qualified id of the service definition
         :param kwargs: See `__init__`
 
         """
-        servicedef = cache.find_by_id(service_id)
+        servicedef = manager.find_by_id(service_id)
         return Service(servicedef, **kwargs)
 
     @classmethod
-    def create_by_name(cls, cache, name, version, provider='riverbed', **kwargs):
+    def create_by_name(cls, manager, name, version,
+                       provider='riverbed', **kwargs):
         """ Create a Service object by service <name,version,provider>
 
-        :param cache: cache to use to lookup the service definition
+        :param manager: used to lookup/load the service definition
         :param str name: the service name
         :param str version: the service version
         :param str provider: the provider of the service
         :param kwargs: See `__init__`
 
         """
-        servicedef = cache.find_by_name(name, version, provider)
+        servicedef = manager.find_by_name(name, version, provider)
         return Service(servicedef, **kwargs)
 
     def add_connection(self, hostname, auth=None, port=None, verify=True):

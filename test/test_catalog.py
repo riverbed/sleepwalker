@@ -11,7 +11,7 @@ import unittest
 
 from sleepwalker.service import Service
 from sim_connection import SimConnection
-from service_loader import SERVICE_DEF_CACHE
+from service_loader import SERVICE_DEF_MANAGER
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +48,7 @@ class CatalogTest(unittest.TestCase):
     def setUp(self):
         id_ = 'http://support.riverbed.com/apis/catalog/1.0'
         conn = CatalogConnection(self)
-        self.service = Service.create_by_id(SERVICE_DEF_CACHE,
+        self.service = Service.create_by_id(SERVICE_DEF_MANAGER,
                                           id_, connection=conn)
         conn.add_service(self.service)
 

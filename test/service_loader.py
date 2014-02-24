@@ -1,5 +1,5 @@
 import os
-from reschema import ServiceDef, ServiceDefCache
+from reschema import ServiceDef, ServiceDefManager
 
 TEST_PATH = os.path.abspath(os.path.dirname(__file__))
 
@@ -15,8 +15,7 @@ class Hook(object):
 
     def find_by_id(self, id_):
         if id_ in self.service_map:
-            s = ServiceDef()
-            s.load(self.service_map[id_])
+            return ServiceDef.create_from_file(self.service_map[id_])
             return s
         else:
             raise KeyError("Invalid id: %s" % id_)
@@ -28,5 +27,5 @@ class Hook(object):
         return self.find_by_id(sid)
 
 
-SERVICE_DEF_CACHE = ServiceDefCache()
-SERVICE_DEF_CACHE.add_load_hook(Hook())
+SERVICE_DEF_MANAGER = ServiceDefManager()
+SERVICE_DEF_MANAGER.add_load_hook(Hook())
