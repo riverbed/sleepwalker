@@ -5,7 +5,7 @@
 #   https://github.com/riverbed/sleepwalker/blob/master/LICENSE ("License").
 # This software is distributed "AS IS" as set forth in the License.
 
-from .service import Service
+from .service import Service, ServiceManager, ConnectionManager
 from .connection import Connection
 from .datarep import Schema, DataRep
 from .exceptions import *

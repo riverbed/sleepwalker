@@ -1,10 +1,11 @@
 import os
 from reschema import ServiceDef, ServiceDefManager
+from sleepwalker import ServiceManager, ConnectionManager
 
 TEST_PATH = os.path.abspath(os.path.dirname(__file__))
 
 
-class Hook(object):
+class ServiceDefLoadHook(object):
     service_map = {
         'http://support.riverbed.com/apis/basic/1.0':
         os.path.join(TEST_PATH, "service_basic.yml"),
@@ -28,4 +29,17 @@ class Hook(object):
 
 
 SERVICE_DEF_MANAGER = ServiceDefManager()
-SERVICE_DEF_MANAGER.add_load_hook(Hook())
+SERVICE_DEF_MANAGER.add_load_hook(ServiceDefLoadHook())
+
+class TestConnectionHook(object):
+
+    def __init__(self, test, conncls):
+        self.test = test
+        self.conncls = conncls
+
+    def connect(self, host):
+        return self.conncls(self.test)
+
+CONNECTION_MANAGER = ConnectionManager()
+SERVICE_MANAGER = ServiceManager(servicedef_manager=SERVICE_DEF_MANAGER,
+                                 connection_manager=CONNECTION_MANAGER)

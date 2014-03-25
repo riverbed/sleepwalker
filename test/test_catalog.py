@@ -11,7 +11,9 @@ import unittest
 
 from sleepwalker.service import Service
 from sim_connection import SimConnection
-from service_loader import SERVICE_DEF_MANAGER
+from service_loader import \
+    SERVICE_DEF_MANAGER, SERVICE_MANAGER, \
+    CONNECTION_MANAGER, TestConnectionHook
 
 logger = logging.getLogger(__name__)
 
@@ -46,11 +48,16 @@ class CatalogConnection(SimConnection):
 
 class CatalogTest(unittest.TestCase):
     def setUp(self):
-        id_ = 'http://support.riverbed.com/apis/catalog/1.0'
-        conn = CatalogConnection(self)
-        self.service = Service.create_by_id(SERVICE_DEF_MANAGER,
-                                          id_, connection=conn)
-        conn.add_service(self.service)
+        CONNECTION_MANAGER.clear_hooks()
+
+        # Set up a test connection hook
+        conn_hook = TestConnectionHook(self, CatalogConnection)
+        CONNECTION_MANAGER.add_conn_hook(conn_hook)
+
+        catalog_id = 'http://support.riverbed.com/apis/catalog/1.0'
+        self.service = SERVICE_MANAGER.find_by_id('http://localhost:80', catalog_id)
+        self.service.connection.add_service(self.service)
+
 
     def test_catalog(self):
         authors = self.service.bind('authors')

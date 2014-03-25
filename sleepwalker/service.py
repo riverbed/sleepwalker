@@ -26,17 +26,128 @@ from .connection import Connection
 from .exceptions import ServiceException, ResourceException, TypeException
 
 
+class ConnectionHook(object):
+
+    def connect(host):
+        return NotImplementedError()
+
+
+class ConnectionManager(object):
+
+    def __init__(self):
+        # Index of connections by host
+        self.by_host = {}
+
+        # List of connection hooks to use
+        self._conn_hooks = []
+
+    def add(self, host, conn):
+        self.by_host[host] = conn
+
+    def add_conn_hook(self, hook):
+        self._conn_hooks.append(hook)
+
+    def clear_hooks(self):
+        self._conn_hooks = []
+
+    def find(self, host):
+        if host not in self.by_host:
+            conn = None
+            for hook in self._conn_hooks:
+                conn = hook.connect(host)
+                if conn:
+                    break
+            if conn is None:
+                raise ConnectionError(
+                    'Failed to establish a connection to %s' % host)
+            self.add(host, conn)
+        else:
+            conn = self.by_host[host]
+        return conn
+
+
+class ServiceManager(object):
+
+    def __init__(self, servicedef_manager, connection_manager):
+
+        self.servicedef_manager = servicedef_manager
+        self.connection_manager = connection_manager
+
+        # Indexed by tuple <id, instance>
+        self.by_id = {}
+
+        # Indexed by tuple <name, version, provider, instance>
+        self.by_name = {}
+
+    def add(self, service):
+        """ Add a Service instance to the manager cache. """
+
+        self.by_id[(service.host, service.servicedef.id,
+                    service.instance)] = service
+        self.by_name[(service.host, service.servicedef.name,
+                      service.servicedef.version, service.servicedef.provider,
+                      service.instance)] = service
+
+
+    def find_by_id(self, host, id, instance=None):
+        """ Find a Service object by service id.
+
+        :param host: IP address or hostname
+        :param id: fully qualified id of the service definition
+        :param instance: unique instance identifier for this
+            service relative to the same host (by connection)
+
+        """
+        id_key = (host, id, instance)
+        if id_key not in self.by_id:
+            servicedef = self.servicedef_manager.find_by_id(id)
+            conn = self.connection_manager.find(host)
+            service = Service(servicedef, host=host, instance=instance,
+                              connection=conn, manager=self)
+            self.add(service)
+        else:
+            service = self.by_id[id_key]
+        return service
+
+    def find_by_name(self, host, name, version,
+                     provider='riverbed', instance=None):
+        """ Find a Service object by service <name,version,provider>
+
+        :param manager: used to lookup/load the service definition
+        :param name: the service name
+        :param version: the service version
+        :param provider: the provider of the service
+        :param instance: unique instance identifier for this
+            service relative to the same host (by connection)
+
+        """
+        name_key = (host, name, version, provider, instance)
+        if name_key not in self.by_name:
+            servicedef = (self.servicedef_manager
+                          .find_by_name(name, version, provider))
+            conn = self.connection_manager.find(host)
+            service = Service(servicedef, host=host, instance=instance,
+                              connection=conn, manager=self)
+            self.add(service)
+        else:
+            service = self.by_name[name_key]
+
+        return service
+
+
 class Service(object):
 
     # Default api root for servicepath when not provided
     # by the user
     DEFAULT_ROOT = '/api'
 
-    def __init__(self, servicedef, instance=None,
-                 servicepath=None, connection=None):
+    def __init__(self, servicedef, host, instance=None,
+                 servicepath=None, connection=None, manager=None):
         """ Create a Service object
 
         :param servicedef: related ServiceDef for this Service
+
+        :param host: IP address or hostname
 
         :param instance: unique instance identifier for this
             service relative to the same host (by connection)
@@ -50,6 +161,7 @@ class Service(object):
 
         """
         self.servicedef = servicedef
+        self.host = host
         self.instance = instance
         if servicepath is None:
             # Default service path is built by joining
@@ -59,47 +171,11 @@ class Service(object):
                                  servicedef.name,
                                  servicedef.version] if p is not None]
 
-            servicepath = '/'.join(paths)
+            servicepath = host + '/'.join(paths)
 
         self.servicepath = servicepath
         self.connection = connection
         self.headers = {}
-
-    @classmethod
-    def create_by_id(cls, manager, service_id, **kwargs):
-        """ Create a Service object by service id.
-
-        :param manager: used to lookup/load the service definition
-        :param str service_id: fully qualified id of the service definition
-        :param kwargs: See `__init__`
-
-        """
-        servicedef = manager.find_by_id(service_id)
-        return Service(servicedef, **kwargs)
-
-    @classmethod
-    def create_by_name(cls, manager, name, version,
-                       provider='riverbed', **kwargs):
-        """ Create a Service object by service <name,version,provider>
-
-        :param manager: used to lookup/load the service definition
-        :param str name: the service name
-        :param str version: the service version
-        :param str provider: the provider of the service
-        :param kwargs: See `__init__`
-
-        """
-        servicedef = manager.find_by_name(name, version, provider)
-        return Service(servicedef, **kwargs)
-
-    def add_connection(self, hostname, auth=None, port=None, verify=True):
-        """ Initialize new connection to hostname
-
-            If an existing connection would rather be used, simply
-            assign it to the `connection` instance variable instead.
-        """
-        # just a passthrough to Connection init, do we need this?
-        self.connection = Connection(hostname, auth, port, verify)
 
     def add_headers(self, headers):
         self.headers.update(headers)
