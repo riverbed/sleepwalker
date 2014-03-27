@@ -1,0 +1,41 @@
+$schema: "http://support.riverbed.com/apis/service_def/2.1"
+id: "http://support.riverbed.com/apis/crossref.foo/1.0"
+provider: "riverbed"
+name: "crossref.foo"
+version: "1.0"
+title: "REST API"
+
+resources:
+
+   foo:
+      type: object
+      properties:
+         id: { type: integer }
+         bar_id: { type: integer }
+         bar_server: { type: string }
+      relations:
+         bar:
+            resource: '/apis/crossref.bar/1.0#/resources/bar'
+            vars:
+               id: '0/bar_id'
+               host: '0/bar_server'
+      links:
+         self: { path: '$/foos/{id}' }
+         get:
+            method: GET
+            response: { $ref: '#/resources/foo' }
+
+   foos:
+      type: array
+      items:
+         $ref: '#/resources/foo'
+
+      links:
+         self: { path: '$/foos' }
+         get:
+            method: GET
+            response: { $ref: '#/resources/foos' }
+         create:
+            method: POST
+            request: { $ref: '#/resources/foo' }
+            response: { $ref: '#/resources/foo' }

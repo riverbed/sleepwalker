@@ -338,7 +338,8 @@ class Schema(object):
                     'Invalid parameter "%s" for self template: %s' %
                     (var, selflink.path.template))
 
-        uri = selflink.path.resolve(self.service.servicepath, variables)
+        (uri_path, values) = selflink.path.resolve(variables)
+        uri = self.service.servicepath + uri_path[1:]
         return DataRep.from_schema(self.service, uri,
                                    jsonschema=self.jsonschema, params=params)
 
@@ -748,10 +749,8 @@ class DataRep(object):
 
         response = self._request('POST', self.uri, obj)
         logger.debug("create response: %s" % response)
-        uri = (link.response
-               .links['self']
-               .path
-               .resolve(self.service.servicepath, response))
+        (uri_path, values) = link.response.links['self'].path.resolve(response)
+        uri = (self.service.servicepath + uri_path[1:])
 
         return DataRep.from_schema(self.service, uri, jsonschema=link.response,
                                    data=response)
@@ -813,7 +812,8 @@ class DataRep(object):
         if path is None:
             path = self.links['self'].path
 
-        return path.resolve(self.service.servicepath, variables)
+        (uri_path, values) = path.resolve(variables)
+        return self.service.servicepath + uri_path[1:]
 
     def follow(self, _name, **kwargs):
         """ Follow a relation by name.
@@ -837,10 +837,27 @@ class DataRep(object):
         else:
             fulldata = None
 
-        (uri, params) = relation.resolve(self.service.servicepath, fulldata,
-                                         self.fragment, params=kwargs)
+        # Resolve the relative path component based on fulldata
+        (uri_path, params, values) = relation.resolve(
+            fulldata, self.fragment, params=kwargs)
+        values = values or {}
 
-        return DataRep.from_schema(self.service, uri,
+        # See if the target link is on the same service
+        target_host = values.get('host', self.service.host)
+        target_instance = values.get('instance', self.service.instance)
+        target_service_id = relation.resource.servicedef.id
+
+        if ( (self.service.servicedef.id != target_service_id) or
+             (self.service.host != target_host) or
+             (self.service.instance != target_instance)):
+            target_service = self.service.manager.find_by_id(
+                target_host, target_service_id, target_instance)
+        else:
+            target_service = self.service
+
+        uri = target_service.servicepath + uri_path[1:]
+
+        return DataRep.from_schema(target_service, uri,
                                    jsonschema=relation.resource,
                                    params=params)
 

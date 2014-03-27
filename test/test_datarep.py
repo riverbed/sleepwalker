@@ -282,7 +282,7 @@ def test_schema_bind_params_no_vars(schema):
     self_link = mock.Mock(reschema.jsonschema.Link)()
     self_link.path = mock.Mock(reschema.jsonschema.Path)()
     self_link.path.template = ANY_CONTAINER_PATH
-    self_link.path.resolve.return_value = ANY_CONTAINER_PATH
+    self_link.path.resolve.return_value = (ANY_CONTAINER_PATH, {})
     self_link._params = ANY_CONTAINER_PARAMS_SCHEMA
 
     with mock.patch('sleepwalker.datarep.DataRep.from_schema') as patched:
@@ -299,7 +299,7 @@ def self_link():
     self_link = mock.Mock(reschema.jsonschema.Link)()
     self_link.path = mock.Mock(reschema.jsonschema.Path)()
     self_link.path.template = ANY_ITEM_PATH_TEMPLATE
-    self_link.path.resolve.return_value = ANY_ITEM_PATH_RESOLVED
+    self_link.path.resolve.return_value = (ANY_ITEM_PATH_RESOLVED, {})
     self_link._params = ANY_ITEM_PARAMS_SCHEMA
     return self_link
 
@@ -892,7 +892,7 @@ def test_datarep_array___iter__(any_datarep_fragment_with_array_data):
 
 
 def test_exception():
-    s = service.Service(ANY_SERVICE_DEF)
+    s = service.Service(ANY_SERVICE_DEF, ANY_URI)
     dr = datarep.DataRep.from_schema(s, uri=ANY_URI,
                                      jsonschema=ANY_DATA_SCHEMA)
     dr._getlink = True

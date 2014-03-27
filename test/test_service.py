@@ -43,30 +43,11 @@ def any_service():
         mock_servicedef.id = ANY_ID
         mock_servicedef.name = ANY_NAME
         mock_servicedef.version = ANY_VERSION
-    return service.Service(mock_servicedef)
+    return service.Service(mock_servicedef, ANY_HOSTNAME)
 
 
 def test_service_instantiation(any_service):
     assert any_service.connection is None
-
-
-def test_add_connection_defaults(any_service):
-    with mock.patch('sleepwalker.service.Connection') as patched:
-        mock_conn = patched.return_value
-        any_service.add_connection(ANY_HOSTNAME)
-        patched.assert_called_once_with(ANY_HOSTNAME, None, None, True)
-        assert any_service.connection is mock_conn
-
-
-def test_add_connection_non_defaults(any_service):
-    with mock.patch('sleepwalker.service.Connection') as patched:
-        mock_conn = patched.return_value
-        any_service.add_connection(ANY_HOSTNAME, auth=ANY_AUTH,
-                                   port=ANY_PORT,
-                                   verify=NON_DEFAULT_VERIFY)
-        patched.assert_called_once_with(ANY_HOSTNAME, ANY_AUTH, ANY_PORT,
-                                        NON_DEFAULT_VERIFY)
-        assert any_service.connection is mock_conn
 
 
 def test_response_no_connection(any_service):

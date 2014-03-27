@@ -21,9 +21,14 @@ Typical usage::
 """
 
 
+import logging
+
 from .datarep import Schema
 from .connection import Connection
-from .exceptions import ServiceException, ResourceException, TypeException
+from .exceptions import \
+    ServiceException, ResourceException, TypeException, ConnectionError
+
+logger = logging.getLogger(__name__)
 
 
 class ConnectionHook(object):
@@ -50,12 +55,19 @@ class ConnectionManager(object):
     def clear_hooks(self):
         self._conn_hooks = []
 
+    def reset(self):
+        for conn in self.by_host.values():
+            conn.close()
+        self.by_host = {}
+
     def find(self, host):
         if host not in self.by_host:
             conn = None
             for hook in self._conn_hooks:
                 conn = hook.connect(host)
                 if conn:
+                    logger.info("Established new connection to '%s' via '%s'" %
+                                (host, hook))
                     break
             if conn is None:
                 raise ConnectionError(
@@ -100,6 +112,8 @@ class ServiceManager(object):
         """
         id_key = (host, id, instance)
         if id_key not in self.by_id:
+            logger.info('ServiceManager instantiating new service: %s/%s/%s' %
+                        (host, id, instance or '<no instance>'))
             servicedef = self.servicedef_manager.find_by_id(id)
             conn = self.connection_manager.find(host)
             service = Service(servicedef, host=host, instance=instance,
@@ -147,7 +161,7 @@ class Service(object):
 
         :param servicedef: related ServiceDef for this Service
 
-        :param host: IP address or hostname
+        :param host: schema + IP address or hostname + port
 
         :param instance: unique instance identifier for this
             service relative to the same host (by connection)
@@ -158,6 +172,8 @@ class Service(object):
 
         :param connection: connection to the target server
             to use for all API calls
+
+        :param manager: ServiceManager instance
 
         """
         self.servicedef = servicedef
@@ -171,11 +187,16 @@ class Service(object):
                                  servicedef.name,
                                  servicedef.version] if p is not None]
 
-            servicepath = host + '/'.join(paths)
+            servicepath = '/'.join(paths)
 
         self.servicepath = servicepath
         self.connection = connection
+        self.manager = manager
+
         self.headers = {}
+
+    def __repr__(self):
+        return '<Service %s>' % self.servicedef.id
 
     def add_headers(self, headers):
         self.headers.update(headers)
