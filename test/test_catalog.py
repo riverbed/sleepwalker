@@ -57,9 +57,8 @@ class CatalogTest(unittest.TestCase):
                                             CatalogServer, self)
 
         catalog_id = 'http://support.riverbed.com/apis/catalog/1.0'
-        self.service = SERVICE_MANAGER.find_by_id('http://catalog-server:80', catalog_id)
-        self.service.connection.add_service(self.service)
-
+        self.service = SERVICE_MANAGER.find_by_id('http://catalog-server:80',
+                                                  catalog_id)
 
     def test_catalog(self):
         authors = self.service.bind('authors')

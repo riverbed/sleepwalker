@@ -13,12 +13,14 @@ resources:
          id: { type: integer }
          bar_id: { type: integer }
          bar_server: { type: string }
+         bar_instance: { type: string }
       relations:
          bar:
             resource: '/apis/crossref.bar/1.0#/resources/bar'
             vars:
                id: '0/bar_id'
-               host: '0/bar_server'
+               $host: '0/bar_server'
+               $instance: '0/bar_instance'
       links:
          self: { path: '$/foos/{id}' }
          get:

@@ -108,6 +108,8 @@ ANY_SERVICE_DATA = {
     'referencing': {'reference': {'thing': [10, 20]}},
 }
 
+ANY_SERVICE_PATH = '/apis/foo/1.0'
+
 # jsonschema.Schema instances are too much effort to mock.
 ANY_SERVICE_DEF = reschema.ServiceDef()
 ANY_SERVICE_DEF.parse(ANY_SERVICE_DEF_TEXT)
@@ -122,14 +124,14 @@ ANY_FRAGMENT_PTR = '/a/2'
 ANY_FRAGMENT_SCHEMA_DICT = {'type': 'number'}
 ANY_FRAGMENT_SCHEMA = ANY_DATA_SCHEMA.by_pointer(ANY_FRAGMENT_PTR)
 
-ANY_CONTAINER_PATH = '/foos'
+ANY_CONTAINER_PATH = '$/foos'
 ANY_CONTAINER_PARAMS_SCHEMA = {'filter': {'type': 'string'},
                                'other': {'type': 'number'}}
 ANY_CONTAINER_PARAMS = {'filter': 'bar'}
 
-ANY_ITEM_PATH_TEMPLATE = '/foos/items/{id}'
+ANY_ITEM_PATH_TEMPLATE = '$/foos/items/{id}'
 ANY_ITEM_PATH_VARS = {'id': 42}
-ANY_ITEM_PATH_RESOLVED = '/foos/items/42'
+ANY_ITEM_PATH_RESOLVED = '$/foos/items/42'
 ANY_ITEM_PARAMS_SCHEMA = {'timezone': {'type': 'string'}}
 ANY_ITEM_PARAMS = {'timezone': 'PST'}
 
@@ -161,7 +163,12 @@ def ref_pair_datareps(mock_service):
 
 @pytest.fixture
 def mock_service():
-    return mock.Mock(service.Service)()
+    svc = mock.MagicMock(service.Service)()
+
+    # servicepath needs to be a string
+    svc.servicepath = ANY_SERVICE_PATH
+
+    return svc
 
 
 @pytest.fixture
@@ -289,9 +296,9 @@ def test_schema_bind_params_no_vars(schema):
         schema.jsonschema.links = {'self': self_link}
         dr = schema.bind(**ANY_CONTAINER_PARAMS)
         assert dr is not None
-        patched.assert_called_once_with(schema.service, ANY_CONTAINER_PATH,
-                                        jsonschema=schema.jsonschema,
-                                        params=ANY_CONTAINER_PARAMS)
+        patched.assert_called_once_with(
+            schema.service, ANY_SERVICE_PATH + ANY_CONTAINER_PATH[1:],
+            jsonschema=schema.jsonschema, params=ANY_CONTAINER_PARAMS)
 
 
 @pytest.fixture
@@ -311,9 +318,9 @@ def test_schema_bind_params_and_vars(schema, self_link):
         kwargs.update(ANY_ITEM_PARAMS)
         dr = schema.bind(**kwargs)
         assert dr is not None
-        patched.assert_called_once_with(schema.service, ANY_ITEM_PATH_RESOLVED,
-                                        jsonschema=schema.jsonschema,
-                                        params=ANY_ITEM_PARAMS)
+        patched.assert_called_once_with(
+            schema.service, ANY_SERVICE_PATH + ANY_ITEM_PATH_RESOLVED[1:],
+            jsonschema=schema.jsonschema, params=ANY_ITEM_PARAMS)
 
 
 def test_schema_bind_extra_kwargs(schema, self_link):

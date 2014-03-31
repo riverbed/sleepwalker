@@ -29,8 +29,7 @@ from the server via `pull()` and a the server is updated via `push()`.
 
 A common read-modify-write cycle is shown below::
 
-   >>> catalog_def = ServiceDef.create_from_file('catalog.yml')
-   >>> catalog = Service(catalog_def)
+   # Staring with catalog as a Service object
    >>> book = catalog.bind('book', id=1)
    >>> book
    <DataRep '/api/catalog/1.0/book' type book>
@@ -843,14 +842,14 @@ class DataRep(object):
         values = values or {}
 
         # See if the target link is on the same service
-        target_host = values.get('host', self.service.host)
-        target_instance = values.get('instance', self.service.instance)
+        target_host = values.get('$host') or self.service.host
+        target_instance = values.get('$instance') or self.service.instance
         target_service_id = relation.resource.servicedef.id
 
         if ( (self.service.servicedef.id != target_service_id) or
              (self.service.host != target_host) or
              (self.service.instance != target_instance)):
-            target_service = self.service.manager.find_by_id(
+            target_service = self.service.service_manager.find_by_id(
                 target_host, target_service_id, target_instance)
         else:
             target_service = self.service

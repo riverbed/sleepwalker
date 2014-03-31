@@ -42,8 +42,11 @@ class CrossRefFooServer(SimServer):
 class CrossRefBarServer(SimServer):
 
     def bar_links_get(self, link, method, uri, data, params, headers):
-        m = re.match('^.*crossref.bar/1.0/bars/([0-9]+)$', uri)
-        return "Bar-%s" % m.group(1)
+        m = re.match('^.*/api/(instance-([0-9]+)/)?crossref.bar/1.0/bars/([0-9]+)$', uri)
+        if m.group(1):
+            return "Bar-instance-%s-%s" % (m.group(2), m.group(3))
+        else:
+            return "Bar-%s" % m.group(3)
 
 
 class FooBarTest(unittest.TestCase):
@@ -65,9 +68,14 @@ class FooBarTest(unittest.TestCase):
         self.foo_service = SERVICE_MANAGER.find_by_id('http://crossref-foo-server', id)
 
         foos = self.foo_service.bind('foos')
-        for i in range(3):
+        for i in range(2):
             foos.create({'bar_id': i + 1,
-                         'bar_server': 'http://crossref-bar-server-%d' % (i + 1)})
+                         'bar_server': 'http://crossref-bar-server-%d' % (i + 1),
+                         'bar_instance': ''})
+            for j in range (2):
+                foos.create({'bar_id': i + 1,
+                             'bar_server': 'http://crossref-bar-server-%d' % (i + 1),
+                             'bar_instance': 'instance-%d' % (j + 1)})
 
         foos.pull()
         self.assertEqual(type(foos), ListDataRep)
@@ -80,19 +88,25 @@ class FooBarTest(unittest.TestCase):
         bar = foos[0].follow('bar')
         self.assertEqual(bar.data, 'Bar-1')
 
-        for bar_ref in foos:
-            bar_id = bar_ref.data['bar_id']
-            bar = bar_ref.follow('bar')
-            self.assertEqual(bar.data, 'Bar-%s' % bar_id)
+        for foo in foos:
+            bar_id = foo.data['bar_id']
+            bar_instance = foo.data['bar_instance']
+
+            bar = foo.follow('bar')
             self.assertEqual(bar.service.host,
                              'http://crossref-bar-server-%s' % bar_id)
+            if bar_instance:
+                self.assertEqual(bar.data, 'Bar-%s-%s' % (bar_instance, bar_id))
+            else:
+                self.assertEqual(bar.data, 'Bar-%s' % bar_id)
 
         # After following bar, each one should go do a new server,
-        self.assertEqual(len(CONNECTION_MANAGER.by_host), 4)
+        self.assertEqual(len(CONNECTION_MANAGER.by_host), 3)
         self.assertTrue('http://crossref-foo-server' in CONNECTION_MANAGER.by_host)
         self.assertTrue('http://crossref-bar-server-1' in CONNECTION_MANAGER.by_host)
         self.assertTrue('http://crossref-bar-server-2' in CONNECTION_MANAGER.by_host)
-        self.assertTrue('http://crossref-bar-server-3' in CONNECTION_MANAGER.by_host)
+        self.assertFalse('http://crossref-bar-server-3' in CONNECTION_MANAGER.by_host)
+
 
 if __name__ == '__main__':
     logging.basicConfig(filename='test.log', level=logging.DEBUG)
