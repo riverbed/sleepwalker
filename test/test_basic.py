@@ -55,6 +55,10 @@ class BasicServer(SimServer):
     def fullitems_links_get(self, link, method, uri, data, params, headers):
         return self._collections['items'].values()
 
+    def fullitems_with_full_links_get(self, link, method, uri, data,
+                                      params, headers):
+        return self._collections['items'].values()
+
     def items_links_get(self, link, method, uri, data, params, headers):
         if params:
             result = []
@@ -259,19 +263,21 @@ class BasicTest(unittest.TestCase):
         self.assertEqual(len(rulers.data), 0)
 
         # Check via 'fullitems' which is an array of $ref : item
-        fullitems = self.service.bind('fullitems')
-        for i,item in enumerate(fullitems):
-            # item is still a fragement of the fullitems collection
-            self.assertEqual(item.uri, '/api/basic/1.0/fullitems')
-            self.assertEqual(item.fragment, '/%d' % i)
+        for name in ['fullitems', 'fullitems_with_full']:
+            fullitems = self.service.bind(name)
+            for i, item in enumerate(fullitems):
+                # item is still a fragement of the fullitems collection
+                self.assertEqual(item.uri, '/api/basic/1.0/%s' % name)
+                self.assertEqual(item.fragment, '/%d' % i)
 
-            # This 'full()' is resolved via the self link
-            fullitem = item.full()
+                # This 'full()' is resolved via the self link
+                fullitem = item.full()
 
-            # The fullitem should now be a normal item
-            self.assertEqual(fullitem.uri, '/api/basic/1.0/items/%d' % item.data['id'])
-            self.assertEqual(fullitem.fragment, '')
-            self.assertEqual(fullitem.data, item.data)
+                # The fullitem should now be a normal item
+                self.assertEqual(fullitem.uri, '/api/basic/1.0/items/%d' %
+                                 item.data['id'])
+                self.assertEqual(fullitem.fragment, '')
+                self.assertEqual(fullitem.data, item.data)
 
     def test_resolve_without_get(self):
         b = self.service.bind('button')

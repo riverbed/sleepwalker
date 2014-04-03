@@ -91,22 +91,27 @@ resources:
          $ref: '#/resources/item'
 
       links:
-         self:
-            path: '$/fullitems'
-            params:
-               category: { type: number }
-               min_price: { type: number }
-               max_price: { type: number }
-               label: { type: string }
+         self: { path: '$/fullitems' }
 
          get:
             method: GET
             response: { $ref: '#/resources/fullitems' }
 
-         create:
-            method: POST
-            request: { $ref: '#/resources/item' }
-            response: { $ref: '#/resources/item' }
+   fullitems_with_full:
+      type: array
+      items:
+         $ref: '#/resources/item'
+         relations:
+            full:
+               resource: '#/resources/item'
+               vars:
+                  id: '0/id'
+      links:
+         self: { path: '$/fullitems_with_full' }
+
+         get:
+            method: GET
+            response: { $ref: '#/resources/fullitems_with_full' }
 
    item:
       type: object
