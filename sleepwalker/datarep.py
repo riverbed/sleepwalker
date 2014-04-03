@@ -517,7 +517,10 @@ class DataRep(object):
             l = self.links['create']
             req = l.request
             resp = l.response
-            if (not req.matches(resp)):
+            if 'self' not in req.links:
+                self._createlink = (
+                    "'create' link request is not a resource")
+            elif (not req.matches(resp)):
                 self._createlink = (
                     "'create' link request does not match the response")
         else:

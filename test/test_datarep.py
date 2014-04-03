@@ -493,6 +493,8 @@ def test_datarep_with_set_invalid_response(mock_service, mock_jsonschema):
 
 def test_datarep_with_create(mock_service, mock_jsonschema):
     mock_jsonschema.links['create'] = mock.Mock(reschema.jsonschema.Link)()
+    mock_jsonschema.links['create'].request.links = \
+        {'self': mock.Mock(reschema.jsonschema.Link)() }
     mock_jsonschema.links['create'].request.matches = \
         mock.Mock(return_value=True)
 
@@ -503,6 +505,8 @@ def test_datarep_with_create(mock_service, mock_jsonschema):
 
 def test_datarep_with_create_req_resp_not_match(mock_service, mock_jsonschema):
     mock_jsonschema.links['create'] = mock.Mock(reschema.jsonschema.Link)()
+    mock_jsonschema.links['create'].request.links = \
+        {'self': mock.Mock(reschema.jsonschema.Link)() }
     mock_jsonschema.links['create'].request.matches = \
         mock.Mock(return_value=False)
 
@@ -510,6 +514,16 @@ def test_datarep_with_create_req_resp_not_match(mock_service, mock_jsonschema):
     helper_check_links(dr, present=[], absent=['_getlink', '_setlink',
                                                '_deletelink'])
     assert 'request does not match the response' in dr._createlink
+
+
+def test_datarep_with_create_req_not_resource(mock_service, mock_jsonschema):
+    mock_jsonschema.links['create'] = mock.Mock(reschema.jsonschema.Link)()
+    mock_jsonschema.links['create'].request.links = {}
+
+    dr = datarep.DataRep(mock_service, ANY_URI, jsonschema=mock_jsonschema)
+    helper_check_links(dr, present=[], absent=['_getlink', '_setlink',
+                                               '_deletelink'])
+    assert 'request is not a resource' in dr._createlink
 
 
 def test_datarep_with_delete(mock_service, mock_jsonschema):
