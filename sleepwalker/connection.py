@@ -8,7 +8,7 @@
 import ssl
 import json
 import urlparse
-
+import logging
 import requests
 import requests.exceptions
 from requests.adapters import HTTPAdapter
@@ -16,7 +16,9 @@ from requests.structures import CaseInsensitiveDict
 from requests.packages.urllib3.util import parse_url
 from requests.packages.urllib3.poolmanager import PoolManager
 
-from .exceptions import URLError, HTTPError
+from .exceptions import URLError, HTTPError, ConnectionError
+
+logger = logging.getLogger(__name__)
 
 
 class SSLAdapter(HTTPAdapter):
@@ -35,12 +37,94 @@ class SSLAdapter(HTTPAdapter):
                                        ssl_version=self.ssl_version)
 
 
+class ConnectionHook(object):
+    """ This class defines the interface for establshing connections for ConnectionManager.
+
+    This class must be sub-classed and the `connect()` method
+    implemented.  An instance of the new class is passed to the
+    `ConnectionManager.add_conn_hook()` method.
+
+    """
+
+    def connect(host):
+        """ Establish a new Connection to the target host.
+
+        :param host: scheme / ip address or hostname / port of the
+            target server to connect to
+
+        This method must return a `Connection` object (or similar) or
+        None if this hook does not know how to connect to the named
+        `host`.
+
+        """
+        return NotImplementedError()
+
+
+class ConnectionManager(object):
+
+    def __init__(self):
+        # Index of connections by host
+        self.by_host = {}
+
+        # List of connection hooks to use
+        self._conn_hooks = []
+
+    def add(self, host, conn):
+        """ Manually add a connection to the given host to the manager.
+
+        :param host: the target host of the connection
+        :param conn: a `Connection` object
+
+        Note that if a connection is already present to the target host
+        it is replaced with the new connection.
+
+        """
+        self.by_host[host] = conn
+
+    def add_conn_hook(self, hook):
+        """ Add a connection hook to call to establish new connections. """
+        self._conn_hooks.append(hook)
+
+    def clear_hooks(self):
+        """ Drop all connection hooks. """
+        self._conn_hooks = []
+
+    def reset(self):
+        """ Close and forget all connections. """
+        for conn in self.by_host.values():
+            conn.close()
+        self.by_host = {}
+
+    def find(self, host):
+        """ Find a connection to the given host, trying hooks as needed.
+
+        :raises ConnectionError: if no connection to the target host
+           could be found and no connection hooks succeeded in
+           establishing a new connection
+        """
+        if host not in self.by_host:
+            conn = None
+            for hook in self._conn_hooks:
+                conn = hook.connect(host)
+                if conn:
+                    logger.info("Established new connection to '%s' via '%s'" %
+                                (host, hook))
+                    break
+            if conn is None:
+                raise ConnectionError(
+                    'Failed to establish a connection to %s' % host)
+            self.add(host, conn)
+        else:
+            conn = self.by_host[host]
+        return conn
+
+
 class Connection(object):
     """ Handle authentication and communication to remote machines. """
     def __init__(self, hostname, auth=None, port=None, verify=True):
         """ Initialize new connection and setup authentication
 
-            `hostname` - include protocol, e.g. "https://host.com"
+            `hostname` - include protocol, e.g. 'https://host.com'
             `auth` - authentication object, see below
             `port` - optional port to use for connection
             `verify` - require SSL certificate validation.
@@ -51,9 +135,6 @@ class Connection(object):
             This auth method will trigger a check  to ensure
             the protocol is using SSL to connect (though cert verification
             may still be turned off to avoid errors with self-signed certs).
-
-            OAuth2 will require the ``requests-oauthlib`` package and
-            an instance of the `OAuth2Session` object.
 
             netrc config files will be checked if auth is left as None.
             If no authentication is provided for the hostname in the
@@ -143,4 +224,5 @@ class Connection(object):
         return r.json()
 
     def add_headers(self, headers):
+        """ Add headers that are common to all requests. """
         self.conn.headers.update(headers)

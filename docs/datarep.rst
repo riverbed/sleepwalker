@@ -1,7 +1,7 @@
 .. py:module:: sleepwalker
 
-:py:class:`DataRep`
-===================
+DataReps
+========
 
 .. automodule:: sleepwalker.datarep
 
@@ -21,4 +21,3 @@ class :py:class:`Schema`
    :members:
 
    .. automethod:: __init__
-              

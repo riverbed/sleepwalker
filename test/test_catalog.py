@@ -9,18 +9,22 @@ import os
 import logging
 import unittest
 
-from sleepwalker.service import Service
-from sim_connection import SimConnection
-from service_loader import SERVICE_DEF_MANAGER
+from sim_server import SimServer
+from service_loader import \
+    SERVICE_MANAGER, ServiceDefLoader, TEST_SERVER_MANAGER
 
 logger = logging.getLogger(__name__)
 
 TEST_PATH = os.path.abspath(os.path.dirname(__file__))
 
+ServiceDefLoader.register_servicedef(
+    'http://support.riverbed.com/apis/catalog/1.0',
+    os.path.join(TEST_PATH, "Catalog.yml"))
 
-class CatalogConnection(SimConnection):
-    def __init__(self, test=None):
-        SimConnection.__init__(self, test)
+
+class CatalogServer(SimServer):
+    def __init__(self, *args, **kwargs):
+        SimServer.__init__(self, *args, **kwargs)
         self.add_collection('books', 'book')
         self.add_collection('authors', 'author')
         self.add_collection('publishers', 'publisher')
@@ -46,11 +50,13 @@ class CatalogConnection(SimConnection):
 
 class CatalogTest(unittest.TestCase):
     def setUp(self):
-        id_ = 'http://support.riverbed.com/apis/catalog/1.0'
-        conn = CatalogConnection(self)
-        self.service = Service.create_by_id(SERVICE_DEF_MANAGER,
-                                          id_, connection=conn)
-        conn.add_service(self.service)
+        TEST_SERVER_MANAGER.reset()
+        TEST_SERVER_MANAGER.register_server('http://catalog-server:80',
+                                            CatalogServer, self)
+
+        catalog_id = 'http://support.riverbed.com/apis/catalog/1.0'
+        self.service = SERVICE_MANAGER.find_by_id('http://catalog-server:80',
+                                                  catalog_id)
 
     def test_catalog(self):
         authors = self.service.bind('authors')

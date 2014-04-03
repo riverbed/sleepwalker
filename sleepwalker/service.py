@@ -6,37 +6,251 @@
 # This software is distributed "AS IS" as set forth in the License.
 
 """
-The `Service` class represents a single service supported by a server.
-A `rest-schema` is bound to the service in order to take advantage
-of the advanced features of `DataRep` instances to validate data,
-execute links and follow relations.
+The `Service` class represents a single service instance supported by
+a server.  Each service is associated with an instance of a service
+defintion (`ServiceDef`), which is the complete map of resources and
+operations that are supported by this service.
 
-Typical usage::
+A separate `Service` object is required for each unique <`service id`,
+`host`, `instance`> triplet.  In addition to the `service id` which
+identifies the service, `host` identifies the particular server that
+is hosting the service, and `instance` is an optional qualifier in the
+event that the server is offering multiple instances of the same
+service defintion at different URI prefixes.
 
+Although a `Service` instance can be created directly, the `ServiceManager`
+is normally used to instantiate services as needed.  This is particularly
+important when following links and relations that lead to another Service
+instance.  Following such references will leverage ServiceManager to
+look for an already instantiated Service that matches, otherwise it
+will create a new Service instance.
+
+The `Service.bind()` method is used to instantiate a `DataRep` for a
+named resource, which is then used to access and modify resources on
+the server.  Any interaction with the server is via a `Connection`.
+
+Manual Service creation
+-----------------------
+
+Creating a `Service` object requires a `ServiceDef` and a `Connection`
+instance:
+
+.. code-block:: python
+
+   # Load the catalog service definition from a file
    >>> catalog_def = ServiceDef.create_from_file('catalog.yml')
-   >>> catalog = Service(catalog_def)
-   >>> catalog.add_connection('restserver.com')
+
+   # Establish a connection to the catalog server
+   >>> conn = Connection('http://catalog-server.com:8080')
+
+   # Create the Service object
+   >>> catalog = Service(catalog_def, 'http://catalog-server.com:8080',
+                         connection=conn)
+
+   # Bind a DataRep to a 'book' instance and retrieve data for this
+   # book from the server
    >>> book = catalog.bind('book', id=1)
+   >>> book.data
+   { 'id': 1, 'title': 'A book' }
+
+The `catalog` instance can be used to access any and all resources
+associated directly with this service.  Any attempt to follow
+references to or leverage types in another service will not be
+possible.
+
+Using Managers
+--------------
+
+For larger projects that span multiple services and hosts, it is easier
+to use the various managers:
+
+* `ServiceDefManager` - loads and creates `ServiceDef` instances on as needed;
+  creates only a single instance per unique service `id`.
+
+* `ConnectionManager` - manages connections to hosts; establishes a
+  single connection to each unique host that may be hosting multiple
+  services.
+
+* `ServiceManager` - manages services; creates a unique `Service` for
+  each unique <`service id`, `host`, `instance`> triplet.
+
+Typically only a single manager of each type will be created:
+
+.. code-block:: python
+
+   # Create a ServiceDefManager to manage service definitions The
+   # CustomServiceDefLoader implements the ServiceDefLoadHook andmust
+   # be defined in order to load service definitions on this system.
+   >>> svcdef_mgr = ServiceDefManager()
+   >>> svcdef_mgr.add_load_hook(CustomServiceDefLoader)
+
+   # Create a ConnectionManager to automatically establish connections
+   # as needed to hosts.  The CustomConnector implements
+   # ConnectionHook and must be defined to create a Connection object
+   # to the target host as needed.
+   >>> conn_mgr = ConnectionManager()
+   >>> conn_mgr.add_conn_hook(CustomConnecter)
+
+   # Create a ServiceManager that will use the above to establish
+   # connections
+   >>> svc_mgr = ServiceManager(servicedef_manager=svcdef_mgr,
+                                connection_manager=conn_mgr)
+
+The ServiceManager then becomes the primary entry point for loading
+services:
+
+.. code-block:: python
+
+   # Ask the ServiceManager for the catalog Service object
+   >>> catalog = svc_mgr.find_by_name(host='http://catalog-server.com:8080',
+                                      name='catalog', version'1.0')
+
+   # Bind a DataRep to a 'book' instance and retrieve data for this
+   # book from the server
+   >>> book = catalog.bind('book', id=1)
+   >>> book.data
+   { 'id': 1, 'title': 'A book' }
+
+Any subsequent calls to `svc_mgr` for the `catalog/1.0` service on this
+particular host will return the same `Service` instance.
 
 """
 
+import copy
+import logging
 
 from .datarep import Schema
-from .connection import Connection
-from .exceptions import ServiceException, ResourceException, TypeException
+from .exceptions import \
+    ServiceException, ResourceException, TypeException
+
+logger = logging.getLogger(__name__)
+
+
+class ServiceManager(object):
+    """ A ServiceManager instance manages multiple Services instances.
+
+    A single `ServiceManager` instance creates `Service` instances as
+    needed, caching instances as they are created.  A unique `Service`
+    is identified by the tuple <`service id`, `host`, `instance`>
+
+    """
+
+    def __init__(self, servicedef_manager, connection_manager):
+        """ Create a `ServiceManager` to manager `Service` instances
+
+        :param servicedef_manager: manager to create `ServiceDef`
+            instances as needed
+        :type ServiceDefManager: reschema.servicedef
+
+        :param connection_manager: manager to establish connections to
+            service hosts as needed
+        :type ConnectionManager: sleepwalker.connection
+
+        """
+
+        self.servicedef_manager = servicedef_manager
+        self.connection_manager = connection_manager
+
+        # Indexed by tuple <id, instance>
+        self.by_id = {}
+
+        # Indexed by tuple <name, version, provider, instance>
+        self.by_name = {}
+
+    def add(self, service):
+        """ Add a Service instance to the manager cache.
+
+        Note that a service by the same id or name is already present
+        in the cache, the passed service replaces it.
+        """
+
+        self.by_id[(service.host, service.servicedef.id,
+                    service.instance)] = service
+        self.by_name[(service.host, service.servicedef.name,
+                      service.servicedef.version, service.servicedef.provider,
+                      service.instance)] = service
+
+    def find_by_id(self, host, id, instance=None):
+        """ Find a Service object by service id.
+
+        :param host: IP address or hostname
+        :param id: fully qualified id of the service definition
+        :param instance: unique instance identifier for this
+            service relative to the same host
+
+        """
+        id_key = (host, id, instance)
+        if id_key not in self.by_id:
+            logger.info('ServiceManager instantiating new service: %s/%s/%s' %
+                        (host, id, instance or '<no instance>'))
+            servicedef = self.servicedef_manager.find_by_id(id)
+            service = Service(servicedef, host=host, instance=instance,
+                              service_manager=self,
+                              connection_manager=self.connection_manager)
+            self.add(service)
+        else:
+            service = self.by_id[id_key]
+        return service
+
+    def find_by_name(self, host, name, version,
+                     provider='riverbed', instance=None):
+        """ Find a Service object by service <name,version,provider>
+
+        :param host: the host for this service
+        :param name: the service name
+        :param version: the service version
+        :param provider: the provider of the service
+        :param instance: unique instance identifier for this
+            service relative to the same host
+
+        """
+        name_key = (host, name, version, provider, instance)
+        if name_key not in self.by_name:
+            servicedef = (self.servicedef_manager
+                          .find_by_name(name, version, provider))
+            service = Service(servicedef, host=host, instance=instance,
+                              service_manager=self,
+                              connection_manager=self.connection_manager)
+            self.add(service)
+        else:
+            service = self.by_name[name_key]
+
+        return service
 
 
 class Service(object):
+    """ Manages all interaction with a server for a particular service.
+
+    A `Service` instance is a client-side representation of
+    a service hosted by a server as described by the following
+    attributes:
+
+    * service definition - the resources and operations supported
+        by the service
+
+    * host - the server hosting this service
+
+    * instance - unique instance identifier
+
+    Once created, most interaction with the server is done
+    indirectly via `DataRep` instances associated with this
+    `Service`.  The `bind()` method is used to lookup and
+    bind to a resource, yielding a DataRep.
+
+    """
 
     # Default api root for servicepath when not provided
     # by the user
     DEFAULT_ROOT = '/api'
 
-    def __init__(self, servicedef, instance=None,
-                 servicepath=None, connection=None):
-        """ Create a Service object
+    def __init__(self, servicedef, host, instance=None,
+                 servicepath=None, service_manager=None,
+                 connection=None, connection_manager=None):
+        """ Create a Service object.
 
         :param servicedef: related ServiceDef for this Service
+
+        :param host: schema + IP address or hostname + port
 
         :param instance: unique instance identifier for this
             service relative to the same host (by connection)
@@ -45,69 +259,50 @@ class Service(object):
             for all resources for this service.  Defaults
             to /api/<instance>/<name>/<version>.
 
+        :param service_manager: ServiceManager instance to use
+            for finding other Services
+
         :param connection: connection to the target server
             to use for all API calls
 
+        :param connection_manager: ConnectionManager instance to use
+            for establishing a connection to other services
+
         """
         self.servicedef = servicedef
+        self.host = host
         self.instance = instance
         if servicepath is None:
             # Default service path is built by joining
             # root, instance (if not null), name and version
-            paths = [p for p in [Service.DEFAULT_ROOT,
-                                 instance,
-                                 servicedef.name,
-                                 servicedef.version] if p is not None]
+            paths = [str(p) for p in [Service.DEFAULT_ROOT,
+                                      instance,
+                                      servicedef.name,
+                                      servicedef.version] if p]
 
             servicepath = '/'.join(paths)
 
         self.servicepath = servicepath
+        self.service_manager = service_manager
         self.connection = connection
+        self.connection_manager = connection_manager
+
         self.headers = {}
 
-    @classmethod
-    def create_by_id(cls, manager, service_id, **kwargs):
-        """ Create a Service object by service id.
-
-        :param manager: used to lookup/load the service definition
-        :param str service_id: fully qualified id of the service definition
-        :param kwargs: See `__init__`
-
-        """
-        servicedef = manager.find_by_id(service_id)
-        return Service(servicedef, **kwargs)
-
-    @classmethod
-    def create_by_name(cls, manager, name, version,
-                       provider='riverbed', **kwargs):
-        """ Create a Service object by service <name,version,provider>
-
-        :param manager: used to lookup/load the service definition
-        :param str name: the service name
-        :param str version: the service version
-        :param str provider: the provider of the service
-        :param kwargs: See `__init__`
-
-        """
-        servicedef = manager.find_by_name(name, version, provider)
-        return Service(servicedef, **kwargs)
-
-    def add_connection(self, hostname, auth=None, port=None, verify=True):
-        """ Initialize new connection to hostname
-
-            If an existing connection would rather be used, simply
-            assign it to the `connection` instance variable instead.
-        """
-        # just a passthrough to Connection init, do we need this?
-        self.connection = Connection(hostname, auth, port, verify)
+    def __repr__(self):
+        return '<Service %s>' % self.servicedef.id
 
     def add_headers(self, headers):
+        """ Add headers that are specific to this service. """
         self.headers.update(headers)
 
     def request(self, method, uri, body=None, params=None, headers=None):
         """ Make request through connection and return result. """
         if not self.connection:
-            raise ServiceException('No connection defined for service.')
+            if not self.connection_manager:
+                raise ServiceException('No connection defined for service.')
+
+            self.connection = self.connection_manager.find(self.host)
 
         if headers is None:
             # No passed headers, but service has defined headers, use them
@@ -129,8 +324,10 @@ class Service(object):
     def bind(self, _resource_name, **kwargs):
         """ Look up resource `_resource_name`, bind it and return a DataRep.
 
-            `_resource_name` - name of resource
-            `**kwargs` - dict of attributes required to bind resource
+        :param _resource_name: resource to bind
+
+        :param kwargs: variables specific to the resource to bind
+
         """
         if self.servicedef is None:
             raise ServiceException("No rest-schema")
@@ -152,16 +349,10 @@ class Service(object):
         return schema
 
     def lookup_resource(self, name):
-        """ Look up `name` as a resource, and return a Schema
-
-            `name` - name of resource
-        """
+        """ Look up a resource by name, and return a `Schema`. """
         return self._lookup(name, self.servicedef.find_resource,
                             ResourceException)
 
     def lookup_type(self, name):
-        """ Look up type `name`, and return a Schema
-
-            `name` - name of type
-        """
+        """ Look up a type by name, and return a `Schema`. """
         return self._lookup(name, self.servicedef.find_type, TypeException)

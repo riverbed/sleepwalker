@@ -14,16 +14,19 @@ import copy
 logger = logging.getLogger(__name__)
 
 
-class SimConnection(object):
-    """ Connection test class which implements a CRUD server. """
+class SimServer(object):
+    """ Server test class which implements a CRUD server. """
 
-    def __init__(self, test=None):
+    def __init__(self, test=None, servicemanager=None):
         self.test = test
         self.services = []
-
+        self.servicemanager = servicemanager
         self._next_id = {}
         self._collections = {}
         self._members = []
+
+    def close(self):
+        pass
 
     def add_collection(self, name, member):
         self._next_id[name] = 1
@@ -35,7 +38,13 @@ class SimConnection(object):
 
     def json_request(self, method, uri, data, params, headers):
         logger.info("%s %s params=%s, data=%s" % (method, uri, params, data))
-        for service in self.services:
+
+        if self.servicemanager is not None:
+            services = self.servicemanager.by_id.values()
+        else:
+            services = self.services
+
+        for service in services:
             m = re.match("^%s(.*)$" % service.servicepath, uri)
             if m:
                 break
@@ -128,8 +137,11 @@ class SimConnection(object):
     def collection_get(self, link, method, uri, data, params, headers):
         logger.debug("Processing get: %s => %s %s" % (uri, data, params))
         m = re.match('.*/([a-z]*)', uri)
-        collection = m.group(1)
-        return self._collections[collection].keys()
+        collection_name = m.group(1)
+        collection = self._collections[collection_name]
+        keys = collection.keys()
+        keys.sort()
+        return [collection[k] for k in keys]
 
     def collection_create(self, link, method, uri, data, params, headers):
         logger.debug("Processing create: %s => %s" % (uri, data))

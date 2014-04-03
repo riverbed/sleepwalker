@@ -1,7 +1,7 @@
 .. py:module:: sleepwalker
 
-:py:class:`Service`
-===================
+Services
+========
 
 .. automodule:: sleepwalker.service
 
@@ -13,3 +13,10 @@ class :py:class:`Service`
 
    .. automethod:: __init__
 
+class :py:class:`ServiceManager`
+--------------------------------
+
+.. autoclass:: ServiceManager
+   :members:
+
+   .. automethod:: __init__

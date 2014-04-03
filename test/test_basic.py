@@ -9,22 +9,27 @@ import os
 import logging
 import unittest
 
-from sleepwalker.service import Service
 from sleepwalker.datarep import DataRep
 from sleepwalker.exceptions import DataPullError
 
-from sim_connection import SimConnection
-from service_loader import SERVICE_DEF_MANAGER
+from sim_server import SimServer
+from service_loader import \
+    ServiceDefLoader, SERVICE_MANAGER, TEST_SERVER_MANAGER
+
 
 logger = logging.getLogger(__name__)
 
 TEST_PATH = os.path.abspath(os.path.dirname(__file__))
 
+ServiceDefLoader.register_servicedef(
+    'http://support.riverbed.com/apis/basic/1.0',
+    os.path.join(TEST_PATH, "service_basic.yml"))
 
-class BasicConnection(SimConnection):
 
-    def __init__(self, test=None):
-        SimConnection.__init__(self, test)
+class BasicServer(SimServer):
+
+    def __init__(self, *args, **kwargs):
+        SimServer.__init__(self, *args, **kwargs)
         self.add_collection('items', 'item')
         self.add_collection('categories', 'category')
         self.add_collection('nullints', 'nullint')
@@ -79,11 +84,12 @@ class BasicConnection(SimConnection):
 class BasicTest(unittest.TestCase):
 
     def setUp(self):
-        conn = BasicConnection(self)
-        id_ = 'http://support.riverbed.com/apis/basic/1.0'
-        self.service = Service.create_by_id(SERVICE_DEF_MANAGER,
-                                          id_, connection=conn)
-        conn.add_service(self.service)
+        TEST_SERVER_MANAGER.reset()
+        TEST_SERVER_MANAGER.register_server('http://basic-server:80',
+                                            BasicServer, self)
+
+        id = 'http://support.riverbed.com/apis/basic/1.0'
+        self.service = SERVICE_MANAGER.find_by_id('http://basic-server:80', id)
 
     def test_x(self):
         x = self.service.bind('x')
