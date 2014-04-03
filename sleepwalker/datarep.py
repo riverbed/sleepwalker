@@ -728,6 +728,22 @@ class DataRep(object):
 
         return self
 
+    def full(self):
+        """ Return a DataRep representing the full item for this fragment. """
+
+        if self.fragment is None:
+            return self
+
+        if 'full' in self.jsonschema.relations:
+            return self.follow('full')
+
+        selflink = self.jsonschema.links.get('self')
+        if selflink:
+            (uri_path, values) = selflink.path.resolve(self.data)
+            uri = self.service.servicepath + uri_path[1:]
+            return DataRep.from_schema(self.service, uri,
+                                       jsonschema=self.jsonschema)
+
     def create(self, obj):
         """ Create a new instance of a resource in a collection.
 

@@ -63,7 +63,7 @@ resources:
       items:
          type: number
          relations:
-            item:
+            full:
                resource: '#/resources/item'
                vars: { id: '0' }
 
@@ -79,6 +79,29 @@ resources:
          get:
             method: GET
             response: { $ref: '#/resources/items' }
+
+         create:
+            method: POST
+            request: { $ref: '#/resources/item' }
+            response: { $ref: '#/resources/item' }
+
+   fullitems:
+      type: array
+      items:
+         $ref: '#/resources/item'
+
+      links:
+         self:
+            path: '$/fullitems'
+            params:
+               category: { type: number }
+               min_price: { type: number }
+               max_price: { type: number }
+               label: { type: string }
+
+         get:
+            method: GET
+            response: { $ref: '#/resources/fullitems' }
 
          create:
             method: POST
@@ -112,7 +135,7 @@ resources:
       items:
          type: number
          relations:
-            category:
+            full:
                resource: '#/resources/category'
                vars: { id: '0' }
 

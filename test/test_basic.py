@@ -52,6 +52,9 @@ class BasicServer(SimServer):
     def button_links_press(self, link, method, uri, data, params, headers):
         return None
 
+    def fullitems_links_get(self, link, method, uri, data, params, headers):
+        return self._collections['items'].values()
+
     def items_links_get(self, link, method, uri, data, params, headers):
         if params:
             result = []
@@ -119,7 +122,7 @@ class BasicTest(unittest.TestCase):
         categories = self.service.bind('categories')
         categories.create({'label': 'foo'})
         categories.pull()
-        category = categories[0].follow('category')
+        category = categories[0].full()
         # explicitly not calling category.pull() here!
         #category.pull()
         items = category.follow('items')
@@ -216,8 +219,8 @@ class BasicTest(unittest.TestCase):
         logger.debug("home_items: %s => %s" % (home_items, home_items.data))
         self.assertEqual(len(home_items.data), 2)
         for elem in home_items:
-            item = elem.follow('item')
-            self.assertEqual(elem.follow('item').data['category'],
+            item = elem.full()
+            self.assertEqual(item.data['category'],
                              cat_home.data['id'])
 
         # Retreive all 'garden' items via bind()
@@ -227,8 +230,8 @@ class BasicTest(unittest.TestCase):
         logger.debug("garden_items: %s => %s" % (garden_items,
                                                  garden_items.data))
         self.assertEqual(len(garden_items.data), 3)
-        for elems in garden_items:
-            self.assertEqual(elems.follow('item').data['category'],
+        for elem in garden_items:
+            self.assertEqual(elem.full().data['category'],
                              cat_garden.data['id'])
 
         # Retreive all 'home' items via category.links.items
@@ -236,12 +239,12 @@ class BasicTest(unittest.TestCase):
         home_items.pull()
         logger.debug("home_items: %s => %s" % (home_items, home_items.data))
         self.assertEqual(len(home_items.data), 2)
-        for elems in home_items:
-            self.assertEqual(elems.follow('item').data['category'],
+        for elem in home_items:
+            self.assertEqual(elem.full().data['category'],
                              cat_home.data['id'])
 
         rulers = self.service.bind('items', label='ruler')
-        ruler = rulers[0].follow('item')
+        ruler = rulers[0].full()
         self.assertEqual(ruler['label'].data, 'ruler')
         ruler_label = ruler['label']
         ruler_label.data = 'metric ruler'
@@ -254,6 +257,21 @@ class BasicTest(unittest.TestCase):
         ruler.delete()
         rulers = self.service.bind('items', label='ruler')
         self.assertEqual(len(rulers.data), 0)
+
+        # Check via 'fullitems' which is an array of $ref : item
+        fullitems = self.service.bind('fullitems')
+        for i,item in enumerate(fullitems):
+            # item is still a fragement of the fullitems collection
+            self.assertEqual(item.uri, '/api/basic/1.0/fullitems')
+            self.assertEqual(item.fragment, '/%d' % i)
+
+            # This 'full()' is resolved via the self link
+            fullitem = item.full()
+
+            # The fullitem should now be a normal item
+            self.assertEqual(fullitem.uri, '/api/basic/1.0/items/%d' % item.data['id'])
+            self.assertEqual(fullitem.fragment, '')
+            self.assertEqual(fullitem.data, item.data)
 
     def test_resolve_without_get(self):
         b = self.service.bind('button')
