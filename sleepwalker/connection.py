@@ -16,7 +16,7 @@ from requests.structures import CaseInsensitiveDict
 from requests.packages.urllib3.util import parse_url
 from requests.packages.urllib3.poolmanager import PoolManager
 
-from .exceptions import URLError, HTTPError
+from .exceptions import URLError, HTTPError, ConnectionError
 
 logger = logging.getLogger(__name__)
 
@@ -74,6 +74,9 @@ class ConnectionManager(object):
 
         :param host: the target host of the connection
         :param conn: a `Connection` object
+
+        Note that if a connection is already present to the target host
+        it is replaced with the new connection.
 
         """
         self.by_host[host] = conn

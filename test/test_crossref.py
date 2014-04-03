@@ -10,14 +10,11 @@ import logging
 import unittest
 import re
 
-from sleepwalker.service import Service
-from sleepwalker.datarep import DataRep, ListDataRep
-from sleepwalker.exceptions import DataPullError
+from sleepwalker.datarep import ListDataRep
 
 from sim_server import SimServer
 from service_loader import \
-    SERVICE_DEF_MANAGER, ServiceDefLoader, \
-    SERVICE_MANAGER, CONNECTION_MANAGER, \
+    ServiceDefLoader, SERVICE_MANAGER, CONNECTION_MANAGER, \
     TEST_SERVER_MANAGER
 
 logger = logging.getLogger(__name__)
@@ -39,10 +36,13 @@ class CrossRefFooServer(SimServer):
         SimServer.__init__(self, *args, **kwargs)
         self.add_collection('foos', 'foo')
 
+
 class CrossRefBarServer(SimServer):
 
     def bar_links_get(self, link, method, uri, data, params, headers):
-        m = re.match('^.*/api/(instance-([0-9]+)/)?crossref.bar/1.0/bars/([0-9]+)$', uri)
+        m = re.match(
+            '^.*/api/(instance-([0-9]+)/)?crossref.bar/1.0/bars/([0-9]+)$',
+            uri)
         if m.group(1):
             return "Bar-instance-%s-%s" % (m.group(2), m.group(3))
         else:
@@ -65,17 +65,20 @@ class FooBarTest(unittest.TestCase):
 
     def test_foo(self):
         id = 'http://support.riverbed.com/apis/crossref.foo/1.0'
-        self.foo_service = SERVICE_MANAGER.find_by_id('http://crossref-foo-server', id)
+        self.foo_service = SERVICE_MANAGER.find_by_id(
+            'http://crossref-foo-server', id)
 
         foos = self.foo_service.bind('foos')
         for i in range(2):
-            foos.create({'bar_id': i + 1,
-                         'bar_server': 'http://crossref-bar-server-%d' % (i + 1),
-                         'bar_instance': ''})
-            for j in range (2):
-                foos.create({'bar_id': i + 1,
-                             'bar_server': 'http://crossref-bar-server-%d' % (i + 1),
-                             'bar_instance': 'instance-%d' % (j + 1)})
+            foos.create(
+                {'bar_id': i + 1,
+                 'bar_server': 'http://crossref-bar-server-%d' % (i + 1),
+                 'bar_instance': ''})
+            for j in range(2):
+                foos.create(
+                    {'bar_id': i + 1,
+                     'bar_server': 'http://crossref-bar-server-%d' % (i + 1),
+                     'bar_instance': 'instance-%d' % (j + 1)})
 
         foos.pull()
         self.assertEqual(type(foos), ListDataRep)
@@ -83,7 +86,8 @@ class FooBarTest(unittest.TestCase):
 
         # There should be one and only one connection to the foo-server
         self.assertEqual(len(CONNECTION_MANAGER.by_host), 1)
-        self.assertTrue('http://crossref-foo-server' in CONNECTION_MANAGER.by_host)
+        self.assertTrue('http://crossref-foo-server' in
+                        CONNECTION_MANAGER.by_host)
 
         bar = foos[0].follow('bar')
         self.assertEqual(bar.data, 'Bar-1')
@@ -96,16 +100,18 @@ class FooBarTest(unittest.TestCase):
             self.assertEqual(bar.service.host,
                              'http://crossref-bar-server-%s' % bar_id)
             if bar_instance:
-                self.assertEqual(bar.data, 'Bar-%s-%s' % (bar_instance, bar_id))
+                self.assertEqual(bar.data, 'Bar-%s-%s' %
+                                 (bar_instance, bar_id))
             else:
                 self.assertEqual(bar.data, 'Bar-%s' % bar_id)
 
         # After following bar, each one should go do a new server,
-        self.assertEqual(len(CONNECTION_MANAGER.by_host), 3)
-        self.assertTrue('http://crossref-foo-server' in CONNECTION_MANAGER.by_host)
-        self.assertTrue('http://crossref-bar-server-1' in CONNECTION_MANAGER.by_host)
-        self.assertTrue('http://crossref-bar-server-2' in CONNECTION_MANAGER.by_host)
-        self.assertFalse('http://crossref-bar-server-3' in CONNECTION_MANAGER.by_host)
+        connmgr_by_host = CONNECTION_MANAGER.by_host
+        self.assertEqual(len(connmgr_by_host), 3)
+        self.assertTrue('http://crossref-foo-server' in connmgr_by_host)
+        self.assertTrue('http://crossref-bar-server-1' in connmgr_by_host)
+        self.assertTrue('http://crossref-bar-server-2' in connmgr_by_host)
+        self.assertFalse('http://crossref-bar-server-3' in connmgr_by_host)
 
 
 if __name__ == '__main__':

@@ -846,9 +846,9 @@ class DataRep(object):
         target_instance = values.get('$instance') or self.service.instance
         target_service_id = relation.resource.servicedef.id
 
-        if ( (self.service.servicedef.id != target_service_id) or
-             (self.service.host != target_host) or
-             (self.service.instance != target_instance)):
+        if (  (self.service.servicedef.id != target_service_id) or
+              (self.service.host != target_host) or
+              (self.service.instance != target_instance)):
             target_service = self.service.service_manager.find_by_id(
                 target_host, target_service_id, target_instance)
         else:
@@ -927,7 +927,7 @@ class DataRep(object):
                     {'type': 'object'},
                     name='httperror',
                     parent=parent,
-                    servicedef = servicedef)
+                    servicedef=servicedef)
                 e.datarep = DataRep.from_schema(service=self.service,
                                                 uri=uri,
                                                 jsonschema=all_schema,
@@ -1009,7 +1009,7 @@ class DictDataRep(ContainerDataRep):
                                    root=new_root)
 
     def has_key(self, key):
-        return k in self
+        return key in self
 
     def __iter__(self):
         # A fragment's keys should be identical to the keys of its data.

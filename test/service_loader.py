@@ -19,7 +19,6 @@ class ServiceDefLoader(object):
     def find_by_id(self, id_):
         if id_ in self.service_map:
             return ServiceDef.create_from_file(self.service_map[id_])
-            return s
         else:
             raise KeyError("Invalid id: %s" % id_)
 
@@ -36,6 +35,7 @@ SERVICE_DEF_MANAGER.add_load_hook(ServiceDefLoader())
 CONNECTION_MANAGER = ConnectionManager()
 SERVICE_MANAGER = ServiceManager(servicedef_manager=SERVICE_DEF_MANAGER,
                                  connection_manager=CONNECTION_MANAGER)
+
 
 class TestServerManager(object):
     server_map = {}

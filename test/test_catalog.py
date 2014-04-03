@@ -9,12 +9,9 @@ import os
 import logging
 import unittest
 
-from sleepwalker.service import Service
 from sim_server import SimServer
 from service_loader import \
-    SERVICE_DEF_MANAGER, SERVICE_MANAGER, \
-    CONNECTION_MANAGER, ServiceDefLoader, \
-    TEST_SERVER_MANAGER
+    SERVICE_MANAGER, ServiceDefLoader, TEST_SERVER_MANAGER
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +20,7 @@ TEST_PATH = os.path.abspath(os.path.dirname(__file__))
 ServiceDefLoader.register_servicedef(
     'http://support.riverbed.com/apis/catalog/1.0',
     os.path.join(TEST_PATH, "Catalog.yml"))
+
 
 class CatalogServer(SimServer):
     def __init__(self, *args, **kwargs):

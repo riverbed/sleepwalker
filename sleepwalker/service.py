@@ -12,10 +12,11 @@ defintion (`ServiceDef`), which is the complete map of resources and
 operations that are supported by this service.
 
 A separate `Service` object is required for each unique <`service id`,
-`host`, `instance`> triplet.  In addition to the service defintion, `host`
-identifies the particular server that is hosting the service, and `instance`
-is an optional qualifier in the event that the server is offering
-multiple instances of the same service defintion at different URI prefixes.
+`host`, `instance`> triplet.  In addition to the `service id` which
+identifies the service, `host` identifies the particular server that
+is hosting the service, and `instance` is an optional qualifier in the
+event that the server is offering multiple instances of the same
+service defintion at different URI prefixes.
 
 Although a `Service` instance can be created directly, the `ServiceManager`
 is normally used to instantiate services as needed.  This is particularly
@@ -25,9 +26,8 @@ look for an already instantiated Service that matches, otherwise it
 will create a new Service instance.
 
 The `Service.bind()` method is used to instantiate a `DataRep` for a
-named resource, which is then used to accessing and modify
-resources on the server.  Any interaction with the server is
-via a `Connection`.
+named resource, which is then used to access and modify resources on
+the server.  Any interaction with the server is via a `Connection`.
 
 Manual Service creation
 -----------------------
@@ -37,7 +37,7 @@ instance:
 
 .. code-block:: python
 
-   # Load the catalog service defintion from a file
+   # Load the catalog service definition from a file
    >>> catalog_def = ServiceDef.create_from_file('catalog.yml')
 
    # Establish a connection to the catalog server
@@ -53,9 +53,10 @@ instance:
    >>> book.data
    { 'id': 1, 'title': 'A book' }
 
-The `catalog` instance can be used to access any and all resources associated
-directly with this service.  Any attempt to follow references to another
-service will not be possible.
+The `catalog` instance can be used to access any and all resources
+associated directly with this service.  Any attempt to follow
+references to or leverage types in another service will not be
+possible.
 
 Using Managers
 --------------
@@ -63,29 +64,30 @@ Using Managers
 For larger projects that span multiple services and hosts, it is easier
 to use the various managers:
 
-* `ServiceDefManager` - load and create `ServiceDef` instances on as needed,
+* `ServiceDefManager` - loads and creates `ServiceDef` instances on as needed;
   creates only a single instance per unique service `id`.
 
-* `ConnectionManager` - manage connections to hosts, establishes a
+* `ConnectionManager` - manages connections to hosts; establishes a
   single connection to each unique host that may be hosting multiple
   services.
 
-* `ServiceManager` - manage services, creating a unique `Service` for
+* `ServiceManager` - manages services; creates a unique `Service` for
   each unique <`service id`, `host`, `instance`> triplet.
 
 Typically only a single manager of each type will be created:
 
 .. code-block:: python
 
-   # Create a ServiceDefManager to manage service definitions
-   # The CustomServiceDefLoader must be defined in order to
-   # load service defintions on this system.
+   # Create a ServiceDefManager to manage service definitions The
+   # CustomServiceDefLoader implements the ServiceDefLoadHook andmust
+   # be defined in order to load service definitions on this system.
    >>> svcdef_mgr = ServiceDefManager()
    >>> svcdef_mgr.add_load_hook(CustomServiceDefLoader)
 
    # Create a ConnectionManager to automatically establish connections
-   # as needed to hosts  The CustomConnector must be defined
-   # to create a Connection object to the target host as needed.
+   # as needed to hosts.  The CustomConnector implements
+   # ConnectionHook and must be defined to create a Connection object
+   # to the target host as needed.
    >>> conn_mgr = ConnectionManager()
    >>> conn_mgr.add_conn_hook(CustomConnecter)
 
@@ -110,16 +112,16 @@ services:
    { 'id': 1, 'title': 'A book' }
 
 Any subsequent calls to `svc_mgr` for the `catalog/1.0` service on this
-particular host will return the same `Service` instnace.
+particular host will return the same `Service` instance.
 
 """
 
+import copy
 import logging
 
 from .datarep import Schema
-from .connection import Connection
 from .exceptions import \
-    ServiceException, ResourceException, TypeException, ConnectionError
+    ServiceException, ResourceException, TypeException
 
 logger = logging.getLogger(__name__)
 
@@ -127,9 +129,10 @@ logger = logging.getLogger(__name__)
 class ServiceManager(object):
     """ A ServiceManager instance manages multiple Services instances.
 
-    A single `ServiceManager` instances creates `Service` instances
-    as needed, caching instances as they are created.  A unique
-    `Service` is identified by the tuple
+    A single `ServiceManager` instance creates `Service` instances as
+    needed, caching instances as they are created.  A unique `Service`
+    is identified by the tuple <`service id`, `host`, `instance`>
+
     """
 
     def __init__(self, servicedef_manager, connection_manager):
@@ -155,14 +158,17 @@ class ServiceManager(object):
         self.by_name = {}
 
     def add(self, service):
-        """ Add a Service instance to the manager cache. """
+        """ Add a Service instance to the manager cache.
+
+        Note that a service by the same id or name is already present
+        in the cache, the passed service replaces it.
+        """
 
         self.by_id[(service.host, service.servicedef.id,
                     service.instance)] = service
         self.by_name[(service.host, service.servicedef.name,
                       service.servicedef.version, service.servicedef.provider,
                       service.instance)] = service
-
 
     def find_by_id(self, host, id, instance=None):
         """ Find a Service object by service id.
@@ -178,7 +184,6 @@ class ServiceManager(object):
             logger.info('ServiceManager instantiating new service: %s/%s/%s' %
                         (host, id, instance or '<no instance>'))
             servicedef = self.servicedef_manager.find_by_id(id)
-            conn = self.connection_manager.find(host)
             service = Service(servicedef, host=host, instance=instance,
                               service_manager=self,
                               connection_manager=self.connection_manager)
@@ -227,7 +232,7 @@ class Service(object):
 
     * instance - unique instance identifier
 
-    Once created, most interaction with the server is done via
+    Once created, most interaction with the server is done
     indirectly via `DataRep` instances associated with this
     `Service`.  The `bind()` method is used to lookup and
     bind to a resource, yielding a DataRep.
@@ -344,7 +349,7 @@ class Service(object):
         return schema
 
     def lookup_resource(self, name):
-        """ Look a resource by name, and return a `Schema`. """
+        """ Look up a resource by name, and return a `Schema`. """
         return self._lookup(name, self.servicedef.find_resource,
                             ResourceException)
 

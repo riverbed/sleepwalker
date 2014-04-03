@@ -9,14 +9,12 @@ import os
 import logging
 import unittest
 
-from sleepwalker.service import Service
 from sleepwalker.datarep import DataRep
 from sleepwalker.exceptions import DataPullError
 
 from sim_server import SimServer
 from service_loader import \
-    SERVICE_DEF_MANAGER, ServiceDefLoader, \
-    SERVICE_MANAGER, TEST_SERVER_MANAGER
+    ServiceDefLoader, SERVICE_MANAGER, TEST_SERVER_MANAGER
 
 
 logger = logging.getLogger(__name__)
@@ -26,6 +24,7 @@ TEST_PATH = os.path.abspath(os.path.dirname(__file__))
 ServiceDefLoader.register_servicedef(
     'http://support.riverbed.com/apis/basic/1.0',
     os.path.join(TEST_PATH, "service_basic.yml"))
+
 
 class BasicServer(SimServer):
 
@@ -91,7 +90,6 @@ class BasicTest(unittest.TestCase):
 
         id = 'http://support.riverbed.com/apis/basic/1.0'
         self.service = SERVICE_MANAGER.find_by_id('http://basic-server:80', id)
-
 
     def test_x(self):
         x = self.service.bind('x')
