@@ -1,5 +1,8 @@
 import os
 import logging
+import re
+
+from requests.structures import CaseInsensitiveDict
 
 from reschema import ServiceDef, ServiceDefManager
 from sleepwalker import ServiceManager, ConnectionManager
@@ -37,6 +40,42 @@ SERVICE_MANAGER = ServiceManager(servicedef_manager=SERVICE_DEF_MANAGER,
                                  connection_manager=CONNECTION_MANAGER)
 
 
+class TestRequest(object):
+
+    def __init__(self, conn, method, uri, data, params, headers):
+        self.conn = conn
+        self.method = method
+        self.uri = uri
+        self.data = data
+        self.params = params
+        self.headers = CaseInsensitiveDict(headers or {})
+
+
+class TestConnection(object):
+
+    def __init__(self, server_manager, host, auth):
+        self.server_manager = server_manager
+        self.host = host
+        self.auth = auth
+
+    def close(self):
+        pass
+
+    def json_request(self, method, uri, data, params, headers):
+        logger.info("%s %s params=%s, data=%s" % (method, uri, params, data))
+        for path, server in (self.server_manager
+                             .server_map[self.host].iteritems()):
+            logger.debug('Comparing path %s to uri %s' % (path, uri))
+
+            if re.match("^%s(.*)$" % path, uri):
+                req = TestRequest(self, method, uri, data, params, headers)
+                if self.auth:
+                    self.auth(req)
+                return server.request(req)
+
+        raise KeyError('Failed to find a server to handle uri: %s' % uri)
+
+
 class TestServerManager(object):
     server_map = {}
 
@@ -44,18 +83,26 @@ class TestServerManager(object):
         self.service_manager = service_manager
 
     @classmethod
-    def register_server(cls, server, conncls, test):
-        logger.info("Registered server: %s -> %s" % (server, conncls))
-        cls.server_map[server] = (conncls, test)
+    def register_server(cls, host, id, instance, servercls, test):
+        service = SERVICE_MANAGER.find_by_id(host, id, instance)
+
+        server = servercls(service, test)
+        m = cls.server_map
+        if host not in m:
+            m[host] = {}
+        m[host][service.servicepath] = server
+
+        logger.info("Registered server: %s -> %s" % (service.servicepath,
+                                                     servercls))
+        return server
 
     def reset(self):
         logger.info("Resetting registered servers")
         TestServerManager.server_map = {}
         self.service_manager.connection_manager.reset()
 
-    def connect(self, host):
-        (conncls, test) = TestServerManager.server_map[host]
-        return conncls(test, self.service_manager)
+    def connect(self, host, auth):
+        return TestConnection(self, host, auth)
 
 TEST_SERVER_MANAGER = TestServerManager(SERVICE_MANAGER)
 CONNECTION_MANAGER.add_conn_hook(TEST_SERVER_MANAGER)

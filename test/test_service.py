@@ -70,12 +70,12 @@ def test_service_bind_no_schema(any_service):
 #
 # Failure is:
 #    test_service.py:89: in test_service_bind
-#    >               mock_service.bind(ANY_RESOURCE_NAME)
+#    > mock_service.bind(ANY_RESOURCE_NAME)
 #    ../sleepwalker/service.py:140: in bind
-#    >       return schema.bind(**kwargs)
+#    > return schema.bind(**kwargs)
 #    ../sleepwalker/datarep.py:319: in bind
-#    >           raise LinkError("Cannot bind a schema that has no 'self' link")
-#    E           LinkError: Cannot bind a schema that has no 'self' link
+#    > raise LinkError("Cannot bind a schema that has no 'self' link")
+#    E LinkError: Cannot bind a schema that has no 'self' link
 @pytest.mark.xfail
 def test_service_bind(any_service):
     with mock.patch('reschema.servicedef.ServiceDef') as patched_servicedef:

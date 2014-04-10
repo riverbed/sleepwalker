@@ -12,7 +12,7 @@ import unittest
 from sleepwalker.datarep import DataRep
 from sleepwalker.exceptions import DataPullError
 
-from sim_server import SimServer
+from sim_server import SimServer, BadPassword
 from service_loader import \
     ServiceDefLoader, SERVICE_MANAGER, TEST_SERVER_MANAGER
 
@@ -91,12 +91,13 @@ class BasicServer(SimServer):
 class BasicTest(unittest.TestCase):
 
     def setUp(self):
+        self.id = 'http://support.riverbed.com/apis/basic/1.0'
+        self.host = 'http://basic-server:80'
         TEST_SERVER_MANAGER.reset()
-        TEST_SERVER_MANAGER.register_server('http://basic-server:80',
-                                            BasicServer, self)
+        self.server = TEST_SERVER_MANAGER.register_server(
+            self.host, self.id, None, BasicServer, self)
 
-        id = 'http://support.riverbed.com/apis/basic/1.0'
-        self.service = SERVICE_MANAGER.find_by_id('http://basic-server:80', id)
+        self.service = SERVICE_MANAGER.find_by_id(self.host, self.id)
 
     def test_x(self):
         x = self.service.bind('x')
@@ -292,6 +293,41 @@ class BasicTest(unittest.TestCase):
         cat._data = DataRep.FAIL
         self.assertRaises(DataPullError, cat.follow, 'items')
         self.assertRaises(DataPullError, cat.execute, 'purchase')
+
+
+class BasicAuthTest(unittest.TestCase):
+
+    class Auth(object):
+        def __init__(self, username, password):
+            self.username = username
+            self.password = password
+
+        def __call__(self, req):
+            req.headers['auth_header'] = (self.username, self.password)
+
+    def setUp(self):
+        self.id = 'http://support.riverbed.com/apis/basic/1.0'
+        self.host = 'http://basic-server:80'
+        TEST_SERVER_MANAGER.reset()
+        self.server = TEST_SERVER_MANAGER.register_server(
+            self.host, self.id, None, BasicServer, self)
+        self.server.allowed_auth = {'test': 'password'}
+
+    def test_auth(self):
+        service = SERVICE_MANAGER.find_by_id(
+            self.host, self.id, auth=BasicAuthTest.Auth('test', 'password'))
+        x = service.bind('x')
+        x.data = 3
+        x.push()
+
+    def test_bad_password(self):
+        service = SERVICE_MANAGER.find_by_id(
+            self.host, self.id, auth=BasicAuthTest.Auth('test', 'badpassword'))
+        x = service.bind('x')
+        x.data = 3
+        with self.assertRaises(BadPassword):
+            x.push()
+
 
 if __name__ == '__main__':
     logging.basicConfig(filename='test.log', level=logging.DEBUG)

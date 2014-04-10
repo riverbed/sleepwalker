@@ -866,7 +866,8 @@ class DataRep(object):
               (self.service.host != target_host) or
               (self.service.instance != target_instance)):
             target_service = self.service.service_manager.find_by_id(
-                target_host, target_service_id, target_instance)
+                target_host, target_service_id, target_instance,
+                auth=self.service.auth)
         else:
             target_service = self.service
 

@@ -66,6 +66,7 @@ class DataNotSetError(SleepwalkerException):
 class FragmentError(SleepwalkerException):
     """ Raised if fragment settings are inconsistent. """
 
+
 #
 # Connection related exceptions
 #
@@ -126,6 +127,7 @@ class HTTPError(SleepwalkerException):
 
 class ClientHTTPError(HTTPError):
     """ Client-side errors (4xx codes). """
+
 
 class HTTPBadRequest(ClientHTTPError):
     pass

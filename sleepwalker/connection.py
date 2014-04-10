@@ -5,6 +5,20 @@
 #   https://github.com/riverbed/sleepwalker/blob/master/LICENSE ("License").
 # This software is distributed "AS IS" as set forth in the License.
 
+"""
+This module defines the `ConnectionManager` class which is used
+together with `ServiceManager` class to support seamlessly following
+links and relations from one service to another, whether on the
+same host or on different hosts.
+
+A single `ConnectionManager` instance instantiates connections
+to target hosts by calling registered `ConnectionHook` instances.
+A connection is established for each unique <host, auth> pair,
+where the auth object represents the authentication credentials
+in a form understood by the underlying connection class.
+
+"""
+
 import ssl
 import json
 import urlparse
@@ -46,40 +60,45 @@ class ConnectionHook(object):
 
     """
 
-    def connect(host):
+    def connect(self, host, auth):
         """ Establish a new Connection to the target host.
 
         :param host: scheme / ip address or hostname / port of the
             target server to connect to
+        :param auth: object representing authentication credentials
+            to use for reqeusts to the target host
 
         This method must return a `Connection` object (or similar) or
         None if this hook does not know how to connect to the named
         `host`.
 
         """
-        return NotImplementedError()
+        return Connection(host, auth)
 
 
 class ConnectionManager(object):
 
+    _default_hooks = [ConnectionHook()]
+
     def __init__(self):
         # Index of connections by host
-        self.by_host = {}
+        self.conns = {}
 
         # List of connection hooks to use
         self._conn_hooks = []
 
-    def add(self, host, conn):
+    def add(self, host, auth, conn):
         """ Manually add a connection to the given host to the manager.
 
         :param host: the target host of the connection
+        :param auth: object representing authentication credentials
         :param conn: a `Connection` object
 
         Note that if a connection is already present to the target host
         it is replaced with the new connection.
 
         """
-        self.by_host[host] = conn
+        self.conns[(host, auth)] = conn
 
     def add_conn_hook(self, hook):
         """ Add a connection hook to call to establish new connections. """
@@ -91,21 +110,26 @@ class ConnectionManager(object):
 
     def reset(self):
         """ Close and forget all connections. """
-        for conn in self.by_host.values():
+        for conn in self.conns.values():
             conn.close()
-        self.by_host = {}
+        self.conns = {}
 
-    def find(self, host):
+    def find(self, host, auth):
         """ Find a connection to the given host, trying hooks as needed.
+
+        :param host: the target host of the connection
+        :param auth: object representing authentication credentials
 
         :raises ConnectionError: if no connection to the target host
            could be found and no connection hooks succeeded in
            establishing a new connection
         """
-        if host not in self.by_host:
+        key = (host, auth)
+        if key not in self.conns:
             conn = None
-            for hook in self._conn_hooks:
-                conn = hook.connect(host)
+            hooks = self._conn_hooks or self._default_hooks
+            for hook in hooks:
+                conn = hook.connect(host, auth)
                 if conn:
                     logger.info("Established new connection to '%s' via '%s'" %
                                 (host, hook))
@@ -113,13 +137,15 @@ class ConnectionManager(object):
             if conn is None:
                 raise ConnectionError(
                     'Failed to establish a connection to %s' % host)
-            self.add(host, conn)
+            self.add(host, auth, conn)
         else:
-            conn = self.by_host[host]
+            conn = self.conns[key]
+            logger.debug("Reusing existing connection to '%s'" % (host))
         return conn
 
 
 class Connection(object):
+
     """ Handle authentication and communication to remote machines. """
     def __init__(self, hostname, auth=None, port=None, verify=True):
         """ Initialize new connection and setup authentication

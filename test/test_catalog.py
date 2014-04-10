@@ -50,11 +50,12 @@ class CatalogServer(SimServer):
 
 class CatalogTest(unittest.TestCase):
     def setUp(self):
-        TEST_SERVER_MANAGER.reset()
-        TEST_SERVER_MANAGER.register_server('http://catalog-server:80',
-                                            CatalogServer, self)
-
         catalog_id = 'http://support.riverbed.com/apis/catalog/1.0'
+        TEST_SERVER_MANAGER.reset()
+        TEST_SERVER_MANAGER.register_server(
+            'http://catalog-server:80', catalog_id, None,
+            CatalogServer, self)
+
         self.service = SERVICE_MANAGER.find_by_id('http://catalog-server:80',
                                                   catalog_id)
 

@@ -16,13 +16,10 @@ import pytest
 from jsonpointer import resolve_pointer, set_pointer
 
 import reschema.jsonschema
-from reschema import servicedef
 from sleepwalker import service, datarep
-from sleepwalker.exceptions import (LinkError, InvalidParameter,
-                                    MissingVariable, RelationError,
-                                    FragmentError, LinkError,
-                                    DataPullError, DataNotSetError,
-                                    HTTPError, HTTPNotFound)
+from sleepwalker.exceptions import \
+    LinkError, InvalidParameter, MissingVariable, FragmentError, \
+    DataPullError, HTTPError, HTTPNotFound
 
 ANY_URI = 'http://hostname.nbttech.com'
 ANY_DATA = {

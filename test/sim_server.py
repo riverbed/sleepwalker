@@ -14,16 +14,28 @@ import copy
 logger = logging.getLogger(__name__)
 
 
+class MissingAuthHeader(Exception):
+    pass
+
+
+class UnknownUsername(Exception):
+    pass
+
+
+class BadPassword(Exception):
+    pass
+
+
 class SimServer(object):
     """ Server test class which implements a CRUD server. """
 
-    def __init__(self, test=None, servicemanager=None):
+    def __init__(self, service, test=None, allowed_auth=None):
         self.test = test
-        self.services = []
-        self.servicemanager = servicemanager
+        self.service = service
         self._next_id = {}
         self._collections = {}
         self._members = []
+        self.allowed_auth = allowed_auth
 
     def close(self):
         pass
@@ -33,23 +45,26 @@ class SimServer(object):
         self._collections[name] = {}
         self._members.append(member)
 
-    def add_service(self, service):
-        self.services.append(service)
+    def request(self, req):
+        if self.allowed_auth:
+            if 'auth_header' not in req.headers:
+                raise MissingAuthHeader()
+            username, password = req.headers.get('auth_header')
 
-    def json_request(self, method, uri, data, params, headers):
+            if username not in self.allowed_auth:
+                raise UnknownUsername()
+
+            if password != self.allowed_auth[username]:
+                raise BadPassword()
+
+        method = req.method
+        uri = req.uri
+        data = req.data
+        params = req.params
+        headers = req.headers
         logger.info("%s %s params=%s, data=%s" % (method, uri, params, data))
 
-        if self.servicemanager is not None:
-            services = self.servicemanager.by_id.values()
-        else:
-            services = self.services
-
-        for service in services:
-            m = re.match("^%s(.*)$" % service.servicepath, uri)
-            if m:
-                break
-
-        self.test and self.test.assertIsNotNone(m)
+        service = self.service
 
         for r in service.servicedef.resources.values():
             for link in r.links.values():
