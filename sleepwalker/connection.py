@@ -66,7 +66,7 @@ class ConnectionHook(object):
         :param host: scheme / ip address or hostname / port of the
             target server to connect to
         :param auth: object representing authentication credentials
-            to use for reqeusts to the target host
+            to use for requests to the target host
 
         This method must return a `Connection` object (or similar) or
         None if this hook does not know how to connect to the named
