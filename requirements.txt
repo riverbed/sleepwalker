@@ -1,5 +1,4 @@
---extra-index-url http://pypibox.lab.nbttech.com/flyscript/development/
 requests
 uritemplate
 jsonpointer
-reschema>=0.3.45
+reschema>=0.4
