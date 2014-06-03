@@ -112,6 +112,18 @@ class HTTPError(SleepwalkerException):
             self.json_data = None
             self.text = response.text
 
+        # Call the parent class constructor with a useful error message,
+        # so that our inherited __str__() method returns this message.
+        # Look for an error message in json_data.  Otherwise use the HTTP
+        # reason string, e.g. 'Bad Request', which comes right from the HTTP
+        # response header.
+        try:
+            error_text = self.json_data['error_text']
+        except Exception:
+            # Fall back on the stock HTTP reason
+            error_text = response.reason
+        super(HTTPError, self).__init__(error_text)
+
     @classmethod
     def raise_by_status(cls, response):
         exception_class = cls.code_map.get(response.status_code, None)
