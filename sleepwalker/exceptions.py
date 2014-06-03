@@ -119,7 +119,7 @@ class HTTPError(SleepwalkerException):
         # response header.
         try:
             error_text = self.json_data['error_text']
-        except Exception:
+        except (TypeError, KeyError):
             # Fall back on the stock HTTP reason
             error_text = response.reason
         super(HTTPError, self).__init__(error_text)

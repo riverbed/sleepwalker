@@ -5,26 +5,11 @@
 #   https://github.com/riverbed/sleepwalker/blob/master/LICENSE ("License").
 # This software is distributed "AS IS" as set forth in the License.
 
-from sleepwalker import SleepwalkerException, HTTPError
+from sleepwalker import HTTPError
 import requests
 import mock
 import json
 import pytest
-
-
-# Most python exceptions behave like this, where the constructor
-# takes arguments that __str__() recites.  SleepwalkerException
-# simply inherits this behavior from Exception.
-def test_sleepwalker_exception():
-    xcls = SleepwalkerException
-    xptn = xcls()
-    assert str(xptn) == ''
-    xptn = xcls('foo')
-    assert str(xptn) == 'foo'
-    xptn = xcls('foo', 2)
-    assert xptn.args == ('foo', 2)
-    assert str(xptn) == "('foo', 2)"
-    assert repr(xptn) == "SleepwalkerException('foo', 2)"
 
 
 # HTTPError's constructor takes a requests.Response argument,
