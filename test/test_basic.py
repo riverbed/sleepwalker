@@ -8,6 +8,8 @@
 import os
 import logging
 import unittest
+import re
+import copy
 
 from sleepwalker.datarep import DataRep
 from sleepwalker.exceptions import DataPullError
@@ -51,6 +53,14 @@ class BasicServer(SimServer):
 
     def button_links_press(self, link, method, uri, data, params, headers):
         return None
+
+    def item_links_extended(self, link, method, uri, data, params, headers):
+        m = re.search('items/([^/]+)/extended', uri)
+        item_id = int(m.group(1))
+        extended_item = self._collections['items'][item_id]
+        cat_id = int(extended_item['category'])
+        extended_item['full_category'] = self._collections['categories'][cat_id]
+        return extended_item
 
     def fullitems_links_get(self, link, method, uri, data, params, headers):
         return self._collections['items'].values()
@@ -245,8 +255,12 @@ class BasicTest(unittest.TestCase):
         logger.debug("home_items: %s => %s" % (home_items, home_items.data))
         self.assertEqual(len(home_items.data), 2)
         for elem in home_items:
-            self.assertEqual(elem.full().data['category'],
+            item_data = copy.copy(elem.full().data)
+            self.assertEqual(item_data['category'],
                              cat_home.data['id'])
+            extended = elem.full().execute('extended')
+            item_data['full_category'] = cat_home.data
+            self.assertEqual(extended.data, item_data)
 
         rulers = self.service.bind('items', label='ruler')
         ruler = rulers[0].full()

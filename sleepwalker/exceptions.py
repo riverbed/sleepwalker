@@ -91,7 +91,7 @@ class HTTPError(SleepwalkerException):
     def __init__(self, response):
         self._response = response
 
-        # These fields are likely to be of immidiate interest for handling
+        # These fields are likely to be of immediate interest for handling
         # errors that are not DataRep-friendly.  We do not expose the entire
         # response directly since if the user is digging that deeply they
         # probably need to be using requests directly.

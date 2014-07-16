@@ -63,7 +63,7 @@ ANY_DATA_SCHEMA_DICT = {
 }
 
 ANY_SERVICE_DEF_TEXT = {
-    '$schema': 'http://support.riverbed.com/apis/service_def/2.1',
+    '$schema': 'http://support.riverbed.com/apis/service_def/2.2',
     'id': 'http://support.riverbed.com/apis/unittest/1.0',
     'provider': 'riverbed',
     'name': 'unittest',

@@ -80,7 +80,7 @@ class SimServer(object):
                 uri_re = uritemplate.expand(template, values)
                 if uri_re[0] == '$':
                     uri_re = "^" + service.servicepath + uri_re[1:] + "$"
-                uri_re = string.replace(uri_re, "__VAR__", "(.*)")
+                uri_re = string.replace(uri_re, "__VAR__", "([^/]+)")
                 logger.debug("matching %s against %s" % (uri, uri_re))
                 m = re.match(uri_re, uri)
                 if not m:
