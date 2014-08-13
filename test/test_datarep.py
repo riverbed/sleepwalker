@@ -79,6 +79,7 @@ ANY_SERVICE_DEF_TEXT = {
             'links': {
                 'self': {'path': '$/whatever'},
                 'get': {
+                    'method': 'GET',
                     'request': {'$ref': '#/resources/referenced'},
                     'response': {'$ref': '#/resources/referenced'},
                 },
@@ -92,6 +93,7 @@ ANY_SERVICE_DEF_TEXT = {
             'links': {
                 'self': {'path': '$/notimportant'},
                 'get': {
+                    'method': 'GET',
                     'request': {'$ref': '#/resources/referenced'},
                     'response': {'$ref': '#/resources/referenced'},
                 },
