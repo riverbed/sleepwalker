@@ -857,7 +857,7 @@ class DataRep(object):
 
         # Resolve the relative path component based on fulldata
         (uri_path, params, values) = relation.resolve(
-            fulldata, self.fragment, params=kwargs)
+            fulldata, self.fragment, kvs=kwargs)
         values = values or {}
 
         # See if the target link is on the same service

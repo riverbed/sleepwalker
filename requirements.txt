@@ -1,4 +1,4 @@
 requests
 uritemplate
 jsonpointer
-reschema>=0.4
+reschema>=0.4.3
