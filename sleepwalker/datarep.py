@@ -337,7 +337,7 @@ class Schema(object):
                     'Invalid parameter "%s" for self template: %s' %
                     (var, selflink.path.template))
 
-        (uri_path, values) = selflink.path.resolve(variables)
+        (uri_path, values) = selflink.path.resolve(kvs=variables)
         uri = self.service.servicepath + uri_path[1:]
         return DataRep.from_schema(self.service, uri,
                                    jsonschema=self.jsonschema, params=params)
@@ -800,37 +800,22 @@ class DataRep(object):
 
     def _resolve_path(self, path, **kwargs):
         """ Internal method to fill in path variables from data and kwargs. """
-
         # It is valid to resolve a link against a resource that is not
-        # get-able, so simply treat this as if there is no data to copy
-        # and initialize variables to an empty dict for convenience.
+        # get-able if the resource obtained data otherwise (as the result of a
+        # set for example), or if all variables are supplied in kwargs.
+        # If we have data, use it, otherwise assume everything is in kwargs.
         #
-        # TODO: Even if we have a get link, we may not need to pull the
-        #       data in order to resolve the path, in which case we should not.
-        if self._getlink is True:
-            # Need to make a copy of resource data, as we'll be adding kwargs
-            # to this list and then resolving the path
-            variables = copy.copy(self.data)
+        # TODO: Even if we have a get link, we may not need to pull the data
+        #       in order to resolve the path, in which case we should not.
+        if self.data_valid() or (self._getlink is True):
+            data = self.data
         else:
-            variables = {}
-
-        # XXXCJ - what if self.data is an int?  How to merge in kwargs?
-        # This can be valid due to the "vars" json-pointer.  For now,
-        # only use data if it is a dict as both this code and the previous
-        # version would produce a TypeError otherwise.  See bug 155184.
-        #
-        # If there are no kwargs, this will work fine.  If we have
-        # a non-dict and kwargs, raise a clear error.
-        if kwargs and not isinstance(variables, dict):
-            raise NotImplementedError(
-                "Resolving links on non-object data not yet implemented.")
-        for key, value in kwargs.iteritems():
-            variables[key] = value
+            data = None
 
         if path is None:
             path = self.links['self'].path
 
-        (uri_path, values) = path.resolve(variables)
+        (uri_path, values) = path.resolve(data, kvs=kwargs)
         return self.service.servicepath + uri_path[1:]
 
     def follow(self, _name, **kwargs):
@@ -847,10 +832,10 @@ class DataRep(object):
         relation = self.relations[_name]
 
         # The .data access checks and causes a pull if data is unset
-        # But only do this if we have a get link.
+        # But only do this if we have a get link, or data is already set.
         # TODO: Even if we have a get link, it still may not be necessary
         #       to pull in order to resolve the relation.
-        if self._getlink is True:
+        if (self._getlink is True) or self.data_valid():
             fulldata = self.root.data if self.fragment else self.data
         else:
             fulldata = None
