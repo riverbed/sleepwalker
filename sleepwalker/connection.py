@@ -30,7 +30,7 @@ from requests.structures import CaseInsensitiveDict
 from requests.packages.urllib3.util import parse_url
 from requests.packages.urllib3.poolmanager import PoolManager
 
-from .exceptions import URLError, HTTPError, ConnectionError
+from sleepwalker.exceptions import URLError, HTTPError, ConnectionError
 
 logger = logging.getLogger(__name__)
 

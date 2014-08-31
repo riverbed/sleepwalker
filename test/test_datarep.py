@@ -16,6 +16,7 @@ import pytest
 from jsonpointer import resolve_pointer, set_pointer
 
 import reschema.jsonschema
+import reschema.exceptions
 from sleepwalker import service, datarep
 from sleepwalker.exceptions import \
     LinkError, InvalidParameter, MissingVariable, FragmentError, \
@@ -939,3 +940,64 @@ def test_exception():
         # Empty schemas appear as Multi schemas and that does not yet work.
         with pytest.raises(NotImplementedError):
             assert exc_dr['error_info']['details'].data is False
+
+# ============ Execute method ==========================
+
+
+@pytest.fixture
+def datarep_with_link(mock_service):
+    schema = reschema.jsonschema.Schema.parse(
+        input={
+            'type': 'string',
+            'links': {'something': {
+                'method': 'GET',
+                'path': {
+                    'template': '$/{foo}',
+                    "vars": {"foo": "0"},
+                }
+            }}
+        },
+        name='any',
+        servicedef=ANY_SERVICE_DEF)
+    rep = datarep.DataRep.from_schema(mock_service, ANY_URI,
+                                      jsonschema=schema)
+    return rep
+
+
+@pytest.fixture
+def data_datarep_with_link(datarep_with_link):
+    datarep_with_link.data = "foo"
+    return datarep_with_link
+
+
+def test_datarep_execute_with_data(data_datarep_with_link):
+    rep = data_datarep_with_link
+    with mock.patch.object(rep, "_request") as mock_request:
+        rep.execute("something")
+        mock_request.assert_called_once_with('GET', '/apis/foo/1.0/foo', None,
+                                             None)
+
+
+def test_datarep_execute_with_data_and_kwargs(data_datarep_with_link):
+    rep = data_datarep_with_link
+    with mock.patch.object(rep, "_request") as mock_request:
+        rep.execute("something", foo="bar")
+        mock_request.assert_called_once_with('GET', '/apis/foo/1.0/bar', None,
+                                             None)
+
+
+def test_datarep_execute(datarep_with_link):
+    rep = datarep_with_link
+    with mock.patch.object(rep, "_request") as mock_request:
+        rep.execute("something", foo="foo")
+        mock_request.assert_called_once_with('GET', '/apis/foo/1.0/foo', None,
+                                             None)
+
+
+def test_datarep_execute_raises(datarep_with_link):
+    # A DataRep that has no get link cannot pull data to resolve other links,
+    # so if no data is present and no kwargs are supplied, we must fallback on
+    # raising an exception.
+    rep = datarep_with_link
+    with pytest.raises(reschema.exceptions.MissingParameter):
+        rep.execute("something")

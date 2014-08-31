@@ -238,16 +238,15 @@ on the JSON pointer following the hash mark '#'.
 
 """
 
-import copy
 import logging
 import uritemplate
 
 from jsonpointer import resolve_pointer, set_pointer
 import reschema.jsonschema
 
-from .exceptions import (MissingVariable, InvalidParameter, RelationError,
-                         FragmentError, HTTPError,
-                         DataPullError, LinkError, DataNotSetError)
+from sleepwalker.exceptions import (MissingVariable, InvalidParameter,
+                                    RelationError, FragmentError, HTTPError,
+                                    DataPullError, LinkError, DataNotSetError)
 
 logger = logging.getLogger(__name__)
 

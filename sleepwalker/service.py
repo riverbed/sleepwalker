@@ -233,8 +233,8 @@ authentication for multiple hosts.
 import copy
 import logging
 
-from .datarep import Schema
-from .exceptions import \
+from sleepwalker.datarep import Schema
+from sleepwalker.exceptions import \
     ServiceException, ResourceException, TypeException
 
 logger = logging.getLogger(__name__)
@@ -275,7 +275,6 @@ class ServiceManager(object):
         :type ConnectionManager: sleepwalker.connection
 
         """
-
         self.servicedef_manager = servicedef_manager
         self.connection_manager = connection_manager
 
