@@ -3,7 +3,7 @@ id: "http://support.riverbed.com/apis/basic/1.0"
 provider: "riverbed"
 name: "basic"
 version: "1.0"
-title: "REST API for a book catalog"
+title: "REST API for a bookstore"
 
 types:
    t:

@@ -37,23 +37,23 @@ instance:
 
 .. code-block:: python
 
-   # Load the catalog service definition from a file
-   >>> catalog_def = ServiceDef.create_from_file('catalog.yml')
+   # Load the bookstore service definition from a file
+   >>> bookstore_def = ServiceDef.create_from_file('bookstore.yml')
 
-   # Establish a connection to the catalog server
-   >>> conn = Connection('http://catalog-server.com:8080')
+   # Establish a connection to the bookstore server
+   >>> conn = Connection('http://bookstore-server.com:8080')
 
    # Create the Service object
-   >>> catalog = Service(catalog_def, 'http://catalog-server.com:8080',
+   >>> bookstore = Service(bookstore_def, 'http://bookstore-server.com:8080',
                          connection=conn)
 
    # Bind a DataRep to a 'book' instance and retrieve data for this
    # book from the server
-   >>> book = catalog.bind('book', id=1)
+   >>> book = bookstore.bind('book', id=1)
    >>> book.data
    { 'id': 1, 'title': 'A book' }
 
-The `catalog` instance can be used to access any and all resources
+The `bookstore` instance can be used to access any and all resources
 associated directly with this service.  Any attempt to follow
 references to or leverage types in another service will not be
 possible.
@@ -64,8 +64,8 @@ Using Managers
 For larger projects that span multiple services and hosts, it is easier
 to use the various managers:
 
-* `ServiceDefManager` - loads and creates `ServiceDef` instances on as needed;
-  creates only a single instance per unique service `id`.
+* `ServiceDefManager` - loads and creates `ServiceDef` instances only
+  as needed; creates only a single instance per unique service `id`.
 
 * `ConnectionManager` - manages connections to hosts; establishes a
   single connection to each unique host that may be hosting multiple
@@ -101,17 +101,17 @@ services:
 
 .. code-block:: python
 
-   # Ask the ServiceManager for the catalog Service object
-   >>> catalog = svc_mgr.find_by_name(host='http://catalog-server.com:8080',
-                                      name='catalog', version'1.0')
+   # Ask the ServiceManager for the bookstore Service object
+   >>> bookstore = svc_mgr.find_by_name(host='http://bookstore-server.com:8080',
+                                      name='bookstore', version'1.0')
 
    # Bind a DataRep to a 'book' instance and retrieve data for this
    # book from the server
-   >>> book = catalog.bind('book', id=1)
+   >>> book = bookstore.bind('book', id=1)
    >>> book.data
    { 'id': 1, 'title': 'A book' }
 
-Any subsequent calls to `svc_mgr` for the `catalog/1.0` service on this
+Any subsequent calls to `svc_mgr` for the `bookstore/1.0` service on this
 particular host will return the same `Service` instance.
 
 Authentication

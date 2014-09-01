@@ -29,10 +29,10 @@ from the server via `pull()` and a the server is updated via `push()`.
 
 A common read-modify-write cycle is shown below::
 
-   # Staring with catalog as a Service object
-   >>> book = catalog.bind('book', id=1)
+   # Staring with bookstore as a Service object
+   >>> book = bookstore.bind('book', id=1)
    >>> book
-   <DataRep '/api/catalog/1.0/book' type book>
+   <DataRep '/api/bookstore/1.0/book' type book>
 
    # Retrieve a copy of the data from server
    >>> book.pull()
@@ -91,17 +91,17 @@ For example, consider the 'book' resource defined below::
 The `purchase` link describes how to purchase one or more copies of
 this book.  In order to purchase 100 copies of book id=1, the client
 must perform a POST to the server at the address
-'/api/catalog/1.0/books/1/purchase' with a body include the requested
+'/api/bookstore/1.0/books/1/purchase' with a body include the requested
 number of copies and shipping address.
 
 Using a `DataRep` instance for this book, this is accomplished via the
 `execute()` method::
 
-   >>> book = catalog.bind('book', id=1)
+   >>> book = bookstore.bind('book', id=1)
    >>> request = {'num_copies': 100, 'shipping_address': '123 Street, Boston' }
    >>> response = book.execute('purchase', request)
    >>> response
-   <DataRep '/api/catalog/1.0/books/1/purchase'
+   <DataRep '/api/bookstore/1.0/books/1/purchase'
        type:book.links.purchase.response>
 
    >>> response.data
@@ -139,7 +139,7 @@ This allows using the `follow()` method to get to a DataRep for the publisher::
 
    >>> pub = book.follow('publisher')
    >>> pub
-   <DataRep '/api/catalog/1.0/publishers/3' type:publisher>
+   <DataRep '/api/bookstore/1.0/publishers/3' type:publisher>
 
    >>> pub.data
    {'id': 3,
@@ -203,11 +203,11 @@ represented in part by the current data member (the id)::
 
    >>> first_author = book['author_ids'][0].follow('full')
    >>> first_author
-   <DataRep '/api/catalog/1.0/authors/1' type:author>
+   <DataRep '/api/bookstore/1.0/authors/1' type:author>
 
    >>> second_author = book['author_ids'][1].follow('full')
    >>> second_author
-   <DataRep '/api/catalog/1.0/authors/9' type:author>
+   <DataRep '/api/bookstore/1.0/authors/9' type:author>
 
 Breaking down that first line further shows DataRep fragment instances
 created:
@@ -217,13 +217,13 @@ created:
 
    >>> book_author_ids = book['author_ids']
    >>> book_author_ids
-   <DataRep '/api/catalog/1.0/books/1#/author_ids' type:book.author_ids>
+   <DataRep '/api/bookstore/1.0/books/1#/author_ids' type:book.author_ids>
 
    >>> book_author_ids.data
    [1, 9]
 
    >>> book_author_ids_0 = book_author_ids[0]
-   <DataRep '/api/catalog/1.0/books/1#/author_ids/0'
+   <DataRep '/api/bookstore/1.0/books/1#/author_ids/0'
        type:book.author_ids[author_id]>
 
    >>> book_author_ids_0.relations.keys()
@@ -267,15 +267,15 @@ class Schema(object):
     This allows inspection of the jsonschema as well as to bind and create
     `DataRep` instances:
 
-       >>> book_schema = catalog.lookup_schema('book')
+       >>> book_schema = bookstore.lookup_schema('book')
        >>> book_schema
-       <Schema '/api/catalog/1.0/books/{id}' type:book>
+       <Schema '/api/bookstore/1.0/books/{id}' type:book>
 
        >>> book_schema.jsonschema.validate({'id': 1})
 
        >>> book1 = book_schema.bind(id=1)
        >>> book1
-       <DataRep '/api/catalog/1.0/books/1' type:book>
+       <DataRep '/api/bookstore/1.0/books/1' type:book>
 
     """
 
@@ -309,7 +309,7 @@ class Schema(object):
 
         Example::
 
-           >>> book_schema = Schema(catalog, book_jsonschema)
+           >>> book_schema = Schema(bookstore, book_jsonschema)
            >>> book1 = book_schema.bind(id=1)
 
         """

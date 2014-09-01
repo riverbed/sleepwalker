@@ -18,11 +18,11 @@ logger = logging.getLogger(__name__)
 TEST_PATH = os.path.abspath(os.path.dirname(__file__))
 
 ServiceDefLoader.register_servicedef(
-    'http://support.riverbed.com/apis/catalog/1.0',
-    os.path.join(TEST_PATH, "Catalog.yml"))
+    'http://support.riverbed.com/apis/bookstore/1.0',
+    os.path.join(TEST_PATH, "Bookstore.yml"))
 
 
-class CatalogServer(SimServer):
+class BookstoreServer(SimServer):
     def __init__(self, *args, **kwargs):
         SimServer.__init__(self, *args, **kwargs)
         self.add_collection('books', 'book')
@@ -48,18 +48,18 @@ class CatalogServer(SimServer):
         return response
 
 
-class CatalogTest(unittest.TestCase):
+class BookstoreTest(unittest.TestCase):
     def setUp(self):
-        catalog_id = 'http://support.riverbed.com/apis/catalog/1.0'
+        bookstore_id = 'http://support.riverbed.com/apis/bookstore/1.0'
         TEST_SERVER_MANAGER.reset()
         TEST_SERVER_MANAGER.register_server(
-            'http://catalog-server:80', catalog_id, None,
-            CatalogServer, self)
+            'http://bookstore-server:80', bookstore_id, None,
+            BookstoreServer, self)
 
-        self.service = SERVICE_MANAGER.find_by_id('http://catalog-server:80',
-                                                  catalog_id)
+        self.service = SERVICE_MANAGER.find_by_id('http://bookstore-server:80',
+                                                  bookstore_id)
 
-    def test_catalog(self):
+    def test_bookstore(self):
         authors = self.service.bind('authors')
         harry = authors.create({'name': 'Harry'})
         fred = authors.create({'name': 'Fred'})
