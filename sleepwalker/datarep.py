@@ -806,15 +806,31 @@ class DataRep(object):
         #
         # TODO: Even if we have a get link, we may not need to pull the data
         #       in order to resolve the path, in which case we should not.
-        if self.data_valid() or (self._getlink is True):
-            data = self.data
+
+        # Note that fragments need to pass the full data (from the root) with
+        # the fragment as the base pointer, so that upwards relative pointers
+        # can be properly resolved.
+        if self.fragment:
+            root = self.root
+        else:
+            root = self
+
+        # Likewise, pulling is based on the root's _getlink.
+        if root.data_valid() or (root._getlink is True):
+            data = root.data
         else:
             data = None
 
         if path is None:
-            path = self.links['self'].path
+            # If we use a different path, use the corresponding fragment
+            # as the starting point for relative pointer resolution.
+            path = root.links['self'].path
+            fragment = root.fragment
+        else:
+            fragment = self.fragment
 
-        (uri_path, values) = path.resolve(data, kvs=kwargs)
+        (uri_path, values) = path.resolve(data, kvs=kwargs,
+                                          pointer=fragment)
         return self.service.servicepath + uri_path[1:]
 
     def follow(self, _name, **kwargs):

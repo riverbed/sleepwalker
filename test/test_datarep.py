@@ -948,14 +948,24 @@ def test_exception():
 def datarep_with_link(mock_service):
     schema = reschema.jsonschema.Schema.parse(
         input={
-            'type': 'string',
-            'links': {'something': {
+            'type': 'object',
+            'properties': {
+                'foo': {'type': 'string'},
+                'bar': {
+                    'type': 'string',
+                    'links': {'something': {
+                        'method': 'GET',
+                        'path': {
+                            'template': '$/{foo}',
+                            "vars": {"foo": "1/foo"},
+                        },
+                    }},
+                },
+            },
+            'links': {'toplink': {
                 'method': 'GET',
-                'path': {
-                    'template': '$/{foo}',
-                    "vars": {"foo": "0"},
-                }
-            }}
+                'path': '$/{foo}',
+            }},
         },
         name='any',
         servicedef=ANY_SERVICE_DEF)
@@ -966,8 +976,8 @@ def datarep_with_link(mock_service):
 
 @pytest.fixture
 def data_datarep_with_link(datarep_with_link):
-    datarep_with_link.data = "foo"
-    return datarep_with_link
+    datarep_with_link.data = {"foo": "foo", "bar": "bar"}
+    return datarep_with_link['bar']
 
 
 def test_datarep_execute_with_data(data_datarep_with_link):
@@ -989,7 +999,7 @@ def test_datarep_execute_with_data_and_kwargs(data_datarep_with_link):
 def test_datarep_execute(datarep_with_link):
     rep = datarep_with_link
     with mock.patch.object(rep, "_request") as mock_request:
-        rep.execute("something", foo="foo")
+        rep.execute("toplink", foo="foo")
         mock_request.assert_called_once_with('GET', '/apis/foo/1.0/foo', None,
                                              None)
 
@@ -1000,4 +1010,4 @@ def test_datarep_execute_raises(datarep_with_link):
     # raising an exception.
     rep = datarep_with_link
     with pytest.raises(reschema.exceptions.MissingParameter):
-        rep.execute("something")
+        rep.execute("toplink")
