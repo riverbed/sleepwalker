@@ -5,7 +5,7 @@
 #   https://github.com/riverbed/sleepwalker/blob/master/LICENSE ("License").
 # This software is distributed "AS IS" as set forth in the License.
 
-from sleepwalker import HTTPError
+from sleepwalker import HTTPError, ClientHTTPError, ServerHTTPError
 import requests
 import mock
 import json
@@ -50,3 +50,12 @@ def test_crippled_response():
     response.json = mock.Mock(return_value=None)
     with pytest.raises(AttributeError):
         HTTPError(response)
+
+
+# Let's not egregiously typo the code map to the point where we
+# use a class twice or use a base class.
+def test_http_error_code_map():
+    bases = set((HTTPError, ClientHTTPError, ServerHTTPError))
+    assert not bases.intersection(HTTPError.code_map.itervalues())
+
+    assert len(HTTPError.code_map) == len(HTTPError.code_map.values())

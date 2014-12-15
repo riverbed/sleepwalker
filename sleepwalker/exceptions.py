@@ -223,7 +223,7 @@ HTTPError.code_map[415] = HTTPUnsupportedMediaType
 
 class HTTPRequestedRangeNotSatisfiable(ClientHTTPError):
     pass
-HTTPError.code_map[416] = ClientHTTPError
+HTTPError.code_map[416] = HTTPRequestedRangeNotSatisfiable
 
 
 class HTTPExpectationFailed(ClientHTTPError):
@@ -285,7 +285,7 @@ HTTPError.code_map[503] = HTTPServiceUnavailable
 
 class HTTPGatewayTimeout(ServerHTTPError):
     pass
-HTTPError.code_map[504] = ServerHTTPError
+HTTPError.code_map[504] = HTTPGatewayTimeout
 
 
 class HTTPVersionNotSupported(ServerHTTPError):
