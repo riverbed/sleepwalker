@@ -383,7 +383,9 @@ class DataRep(object):
 
         js = jsonschema if jsonschema else root.jsonschema.by_pointer(fragment)
 
-        if isinstance(js, reschema.jsonschema.Ref):
+        if isinstance(js, reschema.jsonschema.DynamicSchema):
+            # Handles references, merges, and potentially any future
+            # indirect schema typing.
             # We need to look at what's on the far end of the reference,
             # not the reference itself.
             js = js.refschema
@@ -865,9 +867,9 @@ class DataRep(object):
         target_instance = values.get('$instance') or self.service.instance
         target_service_id = relation.resource.servicedef.id
 
-        if (  (self.service.servicedef.id != target_service_id) or
-              (self.service.host != target_host) or
-              (self.service.instance != target_instance)):
+        if ((self.service.servicedef.id != target_service_id) or
+                (self.service.host != target_host) or
+                (self.service.instance != target_instance)):
             target_service = self.service.service_manager.find_by_id(
                 target_host, target_service_id, target_instance,
                 auth=self.service.auth)

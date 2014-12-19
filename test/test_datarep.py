@@ -63,6 +63,9 @@ ANY_DATA_SCHEMA_DICT = {
     'links': {'self': {'path': '$/anything'}},
 }
 
+MERGE_TARGET_DESC = 'Description before merge'
+MERGE_WITH_DESC = 'Description after merge'
+
 ANY_SERVICE_DEF_TEXT = {
     '$schema': 'http://support.riverbed.com/apis/service_def/2.2',
     'id': 'http://support.riverbed.com/apis/unittest/1.0',
@@ -71,6 +74,17 @@ ANY_SERVICE_DEF_TEXT = {
     'version': '1.0',
     'title': 'API for use in unit tests',
     'defaultAuthorization': 'none',
+    'types': {
+        'merge_target': {
+            'type': 'object',
+            'properties': {
+                'obj': {'type': 'object', 'additionalProperties': False},
+                'arr': {'type': 'array', 'items': {'type': 'number'}},
+                'i': {'type': 'integer'},
+            },
+            'description': MERGE_TARGET_DESC,
+        },
+    },
     'resources': {
         'referenced': {
             'type': 'object',
@@ -100,12 +114,24 @@ ANY_SERVICE_DEF_TEXT = {
                 },
             },
         },
+        'merged': {
+            '$merge': {
+                'source': {'$ref': '#/types/merge_target'},
+                'with': {
+                    'description': MERGE_WITH_DESC,
+                    'links': {
+                        'self': {'path': '$/whatever'},
+                    },
+                },
+            },
+        },
     },
 }
 
 ANY_SERVICE_DATA = {
     'referenced': {'thing': [1, 2, 3]},
     'referencing': {'reference': {'thing': [10, 20]}},
+    'merged': {'obj': {}, 'arr': [0, 1, 2], 'i': 42}
 }
 
 ANY_SERVICE_PATH = '/apis/foo/1.0'
@@ -159,6 +185,21 @@ def ref_pair_datareps(mock_service):
     pair.referencing.pull = mock.Mock(side_effect=referencing_data)
 
     return pair
+
+
+@pytest.fixture
+def merged_datarep(mock_service):
+    rs = ANY_SERVICE_DEF
+    merged = datarep.DataRep.from_schema(
+        service=mock_service,
+        uri=ANY_URI,
+        jsonschema=rs.resources['merged'])
+
+    def referenced_data():
+        merged._data = ANY_SERVICE_DATA['merged']
+    merged.pull = mock.Mock(side_effect=referenced_data)
+
+    return merged
 
 
 @pytest.fixture
@@ -497,7 +538,7 @@ def test_datarep_with_set_invalid_response(mock_service, mock_jsonschema):
 def test_datarep_with_create(mock_service, mock_jsonschema):
     mock_jsonschema.links['create'] = mock.Mock(reschema.jsonschema.Link)()
     mock_jsonschema.links['create'].request.links = \
-        {'self': mock.Mock(reschema.jsonschema.Link)() }
+        {'self': mock.Mock(reschema.jsonschema.Link)()}
     mock_jsonschema.links['create'].request.matches = \
         mock.Mock(return_value=True)
 
@@ -509,7 +550,7 @@ def test_datarep_with_create(mock_service, mock_jsonschema):
 def test_datarep_with_create_req_resp_not_match(mock_service, mock_jsonschema):
     mock_jsonschema.links['create'] = mock.Mock(reschema.jsonschema.Link)()
     mock_jsonschema.links['create'].request.links = \
-        {'self': mock.Mock(reschema.jsonschema.Link)() }
+        {'self': mock.Mock(reschema.jsonschema.Link)()}
     mock_jsonschema.links['create'].request.matches = \
         mock.Mock(return_value=False)
 
@@ -832,6 +873,10 @@ def test_datarep_ref(ref_pair_datareps):
     assert type(from_ref) is datarep.DictDataRep
     assert type(from_ref['thing']) is datarep.ListDataRep
     assert type(from_ref['thing'][0]) is datarep.DataRep
+
+
+def test_datarep_merge(merged_datarep):
+    assert type(merged_datarep) is datarep.DictDataRep
 
 
 @pytest.mark.xfail
