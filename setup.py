@@ -1,20 +1,16 @@
-import os
-import pip
-import sys
-
-from setuptools.command.test import test as TestCommand
-from pip.req import parse_requirements
-from versioning import get_version
-
-try:
-    from setuptools import setup
-except ImportError:
-    from distutils.core import setup
-
-def requirements():
-    return [str(ir.req) for ir in parse_requirements('requirements.txt')]
+from gitpy_versioning import get_version
+from setuptools import setup
 
 readme = open('README.rst').read()
+
+doc = [
+    'sphinx',
+]
+
+test = [
+    'pytest',
+    'mock',
+]
 
 setup(
     name='sleepwalker',
@@ -30,7 +26,19 @@ setup(
     scripts=[
     ],
     include_package_data=True,
-    install_requires=requirements(),
+    install_requires=[
+        "requests",
+        "uritemplate",
+        "jsonpointer",
+        "reschema",
+    ],
+    extras_require={
+        'test': test,
+        'doc': doc,
+        'dev': test + doc,
+        'all': [],
+    },
+    tests_require=test,
     keywords='sleepwalker',
-    tests_require=['pytest', 'mock'],
+    url="https://gitlab.lab.nbttech.com/steelscript/sleepwalker/",
 )

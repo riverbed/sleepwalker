@@ -1,4 +1,4 @@
-requests
-uritemplate
-jsonpointer
-reschema>=0.4.3
+--index-url https://pypibox.lab.nbttech.com/flyscript/development/
+
+-e .[dev,all]
+
