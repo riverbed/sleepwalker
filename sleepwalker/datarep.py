@@ -675,6 +675,11 @@ class DataRep(object):
             raise LinkError(self._getlink)
 
         response = self._request('GET', self.uri, params=self.params)
+
+        if VALIDATE_RESPONSE:
+            response_schema = self.jsonschema.links['get'].response
+            response_schema.validate(response)
+
         self._data = response
         return self
 

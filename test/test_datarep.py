@@ -10,14 +10,14 @@ from collections import OrderedDict, namedtuple
 import copy
 import json
 import requests
-
+import requests_mock
 import mock
 import pytest
 from jsonpointer import resolve_pointer, set_pointer
 
 import reschema.jsonschema
 import reschema.exceptions
-from sleepwalker import service, datarep
+from sleepwalker import service, datarep, connection
 from sleepwalker.exceptions import \
     LinkError, InvalidParameter, MissingVariable, FragmentError, \
     DataPullError, HTTPError, HTTPNotFound
@@ -160,6 +160,56 @@ ANY_ITEM_PATH_VARS = {'id': 42}
 ANY_ITEM_PATH_RESOLVED = '$/foos/items/42'
 ANY_ITEM_PARAMS_SCHEMA = {'timezone': {'type': 'string'}}
 ANY_ITEM_PARAMS = {'timezone': 'PST'}
+
+STRICT_SCHEMA_DICT = {
+    '$schema': 'http://support.riverbed.com/apis/service_def/2.2',
+    'id': 'http://whatever.com',
+    'provider': 'riverbed',
+    'name': 'validate_me',
+    'version': '1.0',
+    'resources': {
+        'anything': {
+            'type': 'object',
+            'additionalProperties': False,
+            'properties': {
+                'id': {'type': 'number'},
+                'value': {'type': 'string'},
+            },
+            'links': {
+                'self': {'path': '$/anything/{id}'},
+                'get': {
+                    'method': 'GET',
+                    'response': {'$ref': '#/resources/anything'}
+                },
+                'set': {
+                    'method': 'PUT',
+                    'request': {'$ref': '#/resources/anything'},
+                    'response': {'$ref': '#/resources/anything'}
+                }
+            },
+        },
+    },
+}
+
+
+@pytest.yield_fixture
+def validate_response():
+    '''Confirm VALIDATE_RESPONSE is True for testing, then restore original.
+    '''
+    original_validate_setting = datarep.VALIDATE_RESPONSE
+    datarep.VALIDATE_RESPONSE = True
+    yield  # ...while test runs
+    datarep.VALIDATE_RESPONSE = original_validate_setting
+
+
+@pytest.fixture
+def mock_datarep():
+    conn = connection.Connection(ANY_URI)
+    svcdef = reschema.ServiceDef()
+    svcdef.parse(STRICT_SCHEMA_DICT)
+    svc = service.Service(svcdef, ANY_URI, connection=conn)
+    mock_dr = svc.bind('anything', id=42)
+    return mock_dr
 
 
 @pytest.fixture
@@ -719,6 +769,53 @@ def test_apply_params_to_fragment(data_fragment):
 
 
 # ================= data, push, pull ========================================
+
+def test_pull_no_validation_with_valid_data(mock_datarep):
+    '''Confirm valid pull() with valid data and VALIDATE_RESPONSE == False
+    '''
+    return_data = {'id': 42, 'value': 'foobar'}
+    svc_path = 'http://hostname.nbttech.com/api/validate_me/1.0/anything/42'
+
+    with requests_mock.mock() as m:
+        m.get(svc_path, json=return_data)
+        assert mock_datarep.pull().data == return_data
+
+
+def test_pull_validation_with_valid_data(mock_datarep, validate_response):
+    '''Confirm valid pull() with valid data and VALIDATE_RESPONSE == True
+    '''
+    return_data = {'id': 42, 'value': 'foobar'}
+    svc_path = 'http://hostname.nbttech.com/api/validate_me/1.0/anything/42'
+
+    with requests_mock.mock() as m:
+        m.get(svc_path, json=return_data)
+        assert mock_datarep.pull().data == return_data
+
+
+def test_pull_no_validation_with_invalid_data(mock_datarep):
+    '''Confirm valid pull() with invalid data and VALIDATE_RESPONSE == False
+    '''
+    return_data = {'id': 42, 'value': 'foobar', 'extraneous': 123}
+    svc_path = 'http://hostname.nbttech.com/api/validate_me/1.0/anything/42'
+
+    with requests_mock.mock() as m:
+        m.get(svc_path, json=return_data)
+        assert mock_datarep.pull().data == return_data
+
+
+def test_pull_validation_with_invalid_data(mock_datarep, validate_response):
+    '''Confirm reschema raises a ValidationError on pull() with invalid data
+       and VALIDATE_RESPONSE == True
+    '''
+    return_data = {'id': 42, 'value': 'foobar', 'extraneous': 123}
+    svc_path = 'http://hostname.nbttech.com/api/validate_me/1.0/anything/42'
+
+    with requests_mock.mock() as m:
+        m.get(svc_path, json=return_data)
+
+        with pytest.raises(reschema.exceptions.ValidationError):
+            mock_datarep.pull()
+
 
 def test_datarep_data_getter_first_access(any_datarep):
     def side_effect():

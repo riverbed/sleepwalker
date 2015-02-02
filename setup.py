@@ -10,12 +10,14 @@ doc = [
 test = [
     'pytest',
     'mock',
+    'requests_mock'
 ]
 
 setup(
     name='sleepwalker',
     version=get_version(),
-    description="sleepwalker - Interact with REST-servers using reschema-based schemas",
+    description=("sleepwalker - Interact with REST-servers using "
+                 "reschema-based schemas"),
     long_description=readme,
     author="Riverbed Technology",
     author_email="cwhite@riverbed.com",
