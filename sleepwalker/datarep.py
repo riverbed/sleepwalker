@@ -805,7 +805,12 @@ class DataRep(object):
         if self._deletelink is not True:
             raise LinkError(self._deletelink)
 
-        self._request('DELETE', self.uri)
+        response = self._request('DELETE', self.uri)
+
+        if VALIDATE_RESPONSE:
+            response_schema = self.jsonschema.links['delete'].response
+            response_schema.validate(response)
+
         self._data = DataRep.DELETED
         return self
 

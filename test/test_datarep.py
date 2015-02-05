@@ -184,7 +184,20 @@ STRICT_SCHEMA_DICT = {
                 'set': {
                     'method': 'PUT',
                     'request': {'$ref': '#/resources/anything'},
-                    'response': {'$ref': '#/resources/anything'},
+                    'response': {'$ref': '#/resources/anything'}
+                },
+                'delete': {
+                    'method': 'DELETE',
+                    'response': {
+                        'type': 'object',
+                        'properties': {
+                            'status': {
+                                'type': 'number',
+                                'enum': [200, 204]
+                            }
+                        }
+                    }
+
                 }
             },
         },
@@ -854,6 +867,54 @@ def test_push_no_validation_with_invalid_resp(mock_datarep):
     with requests_mock.mock() as m:
         m.put(svc_path, json=invalid_response)
         assert mock_datarep.push(data).data == invalid_response
+
+
+def test_delete_with_invalid_response_and_no_validation(mock_datarep):
+    '''When VALIDATE_RESPONSE == False, confirm datarep ignores an
+       invalid response.
+    '''
+    return_data = {'status': 401}
+    svc_path = 'http://hostname.nbttech.com/api/validate_me/1.0/anything/42'
+
+    with requests_mock.mock() as m:
+        m.delete(svc_path, json=return_data)
+        r = mock_datarep.delete()
+
+        # Accessing data for an apparently deleted datarep should raise
+        # a DataPullError.
+        with pytest.raises(DataPullError):
+            r.data
+
+
+def test_delete_with_valid_response(mock_datarep, validate_response):
+    '''When VALIDATE_RESPONSE == True, confirm successful deletion after
+       receiving a valid response
+    '''
+    return_data = {'status': 204}
+    svc_path = 'http://hostname.nbttech.com/api/validate_me/1.0/anything/42'
+
+    with requests_mock.mock() as m:
+        m.delete(svc_path, json=return_data)
+        r = mock_datarep.delete()
+
+        # Accessing data for a successfully deleted datarep should raise
+        # a DataPullError
+        with pytest.raises(DataPullError):
+            r.data
+
+
+def test_delete_with_invalid_response(mock_datarep, validate_response):
+    '''When VALIDATE_RESPONSE == True, confirm that reschema raises a
+       ValidationError on delete() if an invalid response is received
+    '''
+    return_data = {'status': 401}  # Unauthorized
+    svc_path = 'http://hostname.nbttech.com/api/validate_me/1.0/anything/42'
+
+    with requests_mock.mock() as m:
+        m.delete(svc_path, json=return_data)
+
+        with pytest.raises(reschema.exceptions.ValidationError):
+            mock_datarep.delete()
 
 
 def test_datarep_data_getter_first_access(any_datarep):
