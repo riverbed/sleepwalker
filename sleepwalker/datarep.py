@@ -677,7 +677,7 @@ class DataRep(object):
         response = self._request('GET', self.uri, params=self.params)
 
         if VALIDATE_RESPONSE:
-            response_schema = self.jsonschema.links['get'].response
+            response_schema = self.links['get'].response
             response_schema.validate(response)
 
         self._data = response
@@ -730,12 +730,13 @@ class DataRep(object):
             raise DataNotSetError("No data to push")
 
         if VALIDATE_REQUEST:
-            self.jsonschema.validate(self._data)
+            request_schema = self.links['set'].request
+            request_schema.validate(self._data)
 
         response = self._request('PUT', self.uri, self._data)
 
         if VALIDATE_RESPONSE:
-            response_schema = self.jsonschema.links['set'].response
+            response_schema = self.links['set'].response
             response_schema.validate(response)
 
         self._data = response
@@ -808,7 +809,7 @@ class DataRep(object):
         response = self._request('DELETE', self.uri)
 
         if VALIDATE_RESPONSE:
-            response_schema = self.jsonschema.links['delete'].response
+            response_schema = self.links['delete'].response
             response_schema.validate(response)
 
         self._data = DataRep.DELETED
