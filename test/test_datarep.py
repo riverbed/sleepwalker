@@ -184,7 +184,7 @@ STRICT_SCHEMA_DICT = {
                 'set': {
                     'method': 'PUT',
                     'request': {'$ref': '#/resources/anything'},
-                    'response': {'$ref': '#/resources/anything'}
+                    'response': {'$ref': '#/resources/anything'},
                 }
             },
         },
@@ -815,6 +815,45 @@ def test_pull_validation_with_invalid_data(mock_datarep, validate_response):
 
         with pytest.raises(reschema.exceptions.ValidationError):
             mock_datarep.pull()
+
+
+def test_push_validation_with_valid_response(mock_datarep, validate_response):
+    '''Confirm no error is raised on push() with valid response and
+       VALIDATE_RESPONSE == True
+    '''
+    data = {'id': 42, 'value': 'foobar'}
+    svc_path = 'http://hostname.nbttech.com/api/validate_me/1.0/anything/42'
+
+    with requests_mock.mock() as m:
+        m.put(svc_path, json=data)
+        assert mock_datarep.push(data).data == data
+
+
+def test_push_validation_with_invalid_resp(mock_datarep, validate_response):
+    '''Confirm reschema raises a ValidationError on push() when an
+       invalid response is received and VALIDATE_RESPONSE == True
+    '''
+    data = {'id': 42, 'value': 'foobar'}
+    svc_path = 'http://hostname.nbttech.com/api/validate_me/1.0/anything/42'
+
+    with requests_mock.mock() as m:
+        m.put(svc_path, json={'status': 401})
+
+        with pytest.raises(reschema.exceptions.ValidationError):
+            mock_datarep.push(data)
+
+
+def test_push_no_validation_with_invalid_resp(mock_datarep):
+    '''Confirm reschema ignores an invalid response when
+       VALIDATE_RESPONSE == False
+    '''
+    data = {'id': 42, 'value': 'foobar'}
+    invalid_response = {'status': 401}
+    svc_path = 'http://hostname.nbttech.com/api/validate_me/1.0/anything/42'
+
+    with requests_mock.mock() as m:
+        m.put(svc_path, json=invalid_response)
+        assert mock_datarep.push(data).data == invalid_response
 
 
 def test_datarep_data_getter_first_access(any_datarep):

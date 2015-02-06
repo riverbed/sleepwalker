@@ -733,6 +733,11 @@ class DataRep(object):
             self.jsonschema.validate(self._data)
 
         response = self._request('PUT', self.uri, self._data)
+
+        if VALIDATE_RESPONSE:
+            response_schema = self.jsonschema.links['set'].response
+            response_schema.validate(response)
+
         self._data = response
 
         return self
