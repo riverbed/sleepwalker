@@ -779,6 +779,10 @@ class DataRep(object):
 
         response = self._request('POST', self.uri, obj)
         logger.debug("create response: %s" % response)
+
+        if VALIDATE_RESPONSE:
+            link.response.validate(response)
+
         (uri_path, values) = link.response.links['self'].path.resolve(response)
         uri = (self.service.servicepath + uri_path[1:])
 

@@ -181,6 +181,11 @@ STRICT_SCHEMA_DICT = {
                     'method': 'GET',
                     'response': {'$ref': '#/resources/anything'}
                 },
+                'create': {
+                    'method': 'POST',
+                    'request': {'$ref': '#/resources/anything'},
+                    'response': {'$ref': '#/resources/anything'}
+                },
                 'set': {
                     'method': 'PUT',
                     'request': {'$ref': '#/resources/anything'},
@@ -197,7 +202,6 @@ STRICT_SCHEMA_DICT = {
                             }
                         }
                     }
-
                 }
             },
         },
@@ -867,6 +871,46 @@ def test_push_no_validation_with_invalid_resp(mock_datarep):
     with requests_mock.mock() as m:
         m.put(svc_path, json=invalid_response)
         assert mock_datarep.push(data).data == invalid_response
+
+
+def test_create_validation_with_valid_resp(mock_datarep, validate_response):
+    '''Confirm reschema ignores an invalid response when
+       VALIDATE_RESPONSE == False
+    '''
+    create_data = {'id': 42, 'value': 'foo'}
+    svc_path = 'http://hostname.nbttech.com/api/validate_me/1.0/anything/42'
+
+    with requests_mock.mock() as m:
+        m.post(svc_path, json=create_data)
+        assert mock_datarep.create(create_data).data == create_data
+
+
+def test_create_validation_with_invalid_resp(mock_datarep, validate_response):
+    '''When VALIDATE_RESPONSE == True, confirm that reschema raises a
+       ValidationError on create() if an invalid response is received
+    '''
+    data = {'value': 'foobar'}
+    invalid_response = {'id': 42, 'value': 'foo', 'extra_thing': 'foo'}
+    svc_path = 'http://hostname.nbttech.com/api/validate_me/1.0/anything/42'
+
+    with requests_mock.mock() as m:
+        m.post(svc_path, json=invalid_response)
+
+        with pytest.raises(reschema.exceptions.ValidationError):
+            mock_datarep.create(data)
+
+
+def test_create_with_invalid_response_and_no_validation(mock_datarep):
+    '''When VALIDATE_RESPONSE == False, confirm datarep ignores an
+       invalid response.
+    '''
+    create_data = {'id': 42, 'value': 'foo'}
+    invalid_response = {'id': 42, 'value': 'foo', 'extra_thing': 'foo'}
+    svc_path = 'http://hostname.nbttech.com/api/validate_me/1.0/anything/42'
+
+    with requests_mock.mock() as m:
+        m.post(svc_path, json=invalid_response)
+        assert mock_datarep.create(create_data).data == invalid_response
 
 
 def test_delete_with_invalid_response_and_no_validation(mock_datarep):
