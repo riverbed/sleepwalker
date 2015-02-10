@@ -32,7 +32,7 @@ setup(
         "requests",
         "uritemplate",
         "jsonpointer",
-        "reschema",
+        "reschema>=0.4.7",
     ],
     extras_require={
         'test': test,
