@@ -202,10 +202,12 @@ class Connection(object):
             r = self.conn.request(method, uri, data=body, params=params,
                                   headers=extra_headers)
         except (requests.exceptions.SSLError,
-                requests.exceptions.ConnectionError):
+                requests.exceptions.ConnectionError) as e:
             if self._ssladapter:
                 # If we've already applied an adapter, this is another problem
-                raise
+                # Raise the corresponding sleepwaker exception.
+                raise ConnectionError("Could not connect to uri %s: %s",
+                                      uri, e)
 
             # Otherwise, mount adapter and retry the request
             self.conn.mount('https://', SSLAdapter(ssl.PROTOCOL_TLSv1))

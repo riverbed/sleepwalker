@@ -9,7 +9,11 @@ import os
 import logging
 import unittest
 import urlparse
-from sleepwalker.exceptions import HTTPNotFound
+
+import mock
+import requests.exceptions
+
+import sleepwalker.exceptions
 
 from sleepwalker.connection import Connection, URLError
 
@@ -50,6 +54,29 @@ class ConnectionTest(unittest.TestCase):
         conn = Connection('https://example.com', port='20483')
         self.assertEqual(conn.hostname, 'https://example.com:20483')
 
+    def test_requests_connection_error(self):
+        def side_effect(*args, **kwargs):
+            raise requests.exceptions.ConnectionError(
+                "ConnectionError from 'requests'")
+
+        conn = Connection('https://example.com')
+        conn._ssladapter = True
+        conn.conn.request = mock.Mock(side_effect=side_effect)
+
+        with self.assertRaises(sleepwalker.exceptions.ConnectionError):
+            conn._request('GET', '/anything')
+
+    def test_requests_ssl_error(self):
+        def side_effect(*args, **kwargs):
+            raise requests.exceptions.SSLError("SSLError from 'requests'")
+
+        conn = Connection('https://example.com')
+        conn._ssladapter = True
+        conn.conn.request = mock.Mock(side_effect=side_effect)
+
+        with self.assertRaises(sleepwalker.exceptions.ConnectionError):
+            conn._request('GET', '/anything')
+
     def test_missing_schema(self):
         with self.assertRaises(URLError):
             Connection('example.com', port=666)
@@ -67,10 +94,10 @@ class ConnectionTest(unittest.TestCase):
 
     def test_404(self):
         conn = Connection(HTTPBIN)
-        with self.assertRaises(HTTPNotFound):
+        with self.assertRaises(sleepwalker.exceptions.HTTPNotFound):
             try:
                 conn.json_request('GET', httpbin('get/notfound'))
-            except HTTPNotFound as hnf:
+            except sleepwalker.exceptions.HTTPNotFound as hnf:
                 self.assertEqual(hnf.http_code, 404)
                 raise
 
