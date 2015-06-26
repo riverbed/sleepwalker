@@ -101,7 +101,7 @@ html_theme_options = {
     'relbartextcolor': '#e16832',
     'relbarlinkcolor': '#e16832',
     'relbarbgcolor': '#000',
-    #'headtextcolor': '#141',
+    # 'headtextcolor': '#141',
 
     'headbgcolor': '#ddd',
     'headtextcolor': '#111',
@@ -115,7 +115,7 @@ html_theme_options = {
     'sidebarbgcolor': '#ccc',
     'sidebartextcolor': '#222',
     'sidebarlinkcolor': '#c77030',
-    'sidebarwidth' : 280,
+    'sidebarwidth': 280,
 
     'footerbgcolor': '#222',
 }
