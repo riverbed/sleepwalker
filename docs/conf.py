@@ -101,7 +101,6 @@ html_theme_options = {
     'relbartextcolor': '#e16832',
     'relbarlinkcolor': '#e16832',
     'relbarbgcolor': '#000',
-    # 'headtextcolor': '#141',
 
     'headbgcolor': '#ddd',
     'headtextcolor': '#111',
