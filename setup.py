@@ -5,7 +5,13 @@
 # as set forth in the License.
 
 from gitpy_versioning import get_version
-from setuptools import setup
+
+try:
+    from setuptools import setup
+    packagedata = True
+except ImportError:
+    from distutils.core import setup
+    packagedata = False
 
 readme = open('README.rst').read()
 
@@ -26,14 +32,14 @@ setup(
                  "reschema-based schemas"),
     long_description=readme,
     author="Riverbed Technology",
-    author_email="cwhite@riverbed.com",
+    author_email="eng-github@riverbed.com",
     packages=[
         'sleepwalker',
     ],
     package_dir={'sleepwalker': 'sleepwalker'},
     scripts=[
     ],
-    include_package_data=True,
+    include_package_data=packagedata,
     install_requires=[
         "requests",
         "uritemplate",
@@ -48,5 +54,15 @@ setup(
     },
     tests_require=test,
     keywords='sleepwalker',
-    url="https://gitlab.lab.nbttech.com/steelscript/sleepwalker/",
+    url="http://pythonhosted.org/steelscript",
+    license='MIT',
+    platforms='Linux, Mac OS, Windows',
+    classifiers=[
+        'Development Status :: 4 - Beta',
+        'Intended Audience :: Developers',
+        'License :: OSI Approved :: MIT License',
+        'Programming Language :: Python :: 2.6',
+        'Programming Language :: Python :: 2.7',
+        'Topic :: System :: Networking',
+    ],
 )
