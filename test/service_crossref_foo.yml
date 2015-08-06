@@ -41,3 +41,14 @@ resources:
             method: POST
             request: { $ref: '#/resources/foo' }
             response: { $ref: '#/resources/foo' }
+
+   embed_bar:
+      type: object
+      properties:
+         name: { type: string }
+         bar: { $ref: '/apis/crossref.bar/1.0#/resources/bar' }
+      links:
+         self: { path: '$/embed_bar' }
+         get:
+            method: GET
+            response: { $ref: '#/resources/embed_bar' }

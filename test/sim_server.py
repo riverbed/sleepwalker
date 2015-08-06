@@ -7,8 +7,12 @@
 import re
 import logging
 import uritemplate
+import urlparse
 import string
 import copy
+
+from reschema.util import uritemplate_required_variables
+
 
 logger = logging.getLogger(__name__)
 
@@ -61,9 +65,20 @@ class SimServer(object):
         data = req.data
         params = req.params
         headers = req.headers
-        logger.info("%s %s params=%s, data=%s" % (method, uri, params, data))
 
         service = self.service
+
+        r = urlparse.urlparse(uri)
+        if r.query:
+            params = params or {}
+            for k, v in dict(urlparse.parse_qsl(r.query)).iteritems():
+                params[k] = v
+            parts = list(r)
+            parts[4] = ''
+            parts[5] = ''
+            uri = urlparse.urlunparse(parts)
+
+        logger.info("%s %s params=%s, data=%s" % (method, uri, params, data))
 
         for r in service.servicedef.resources.values():
             for link in r.links.values():
@@ -71,7 +86,7 @@ class SimServer(object):
                         (link.path is None)):
                     continue
                 template = link.path.template
-                vars = uritemplate.variables(template)
+                vars = uritemplate_required_variables(template)
                 values = {}
                 for v in vars:
                     values[v] = "__VAR__"

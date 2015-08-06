@@ -50,6 +50,10 @@ class BasicServer(SimServer):
     def x_links_action2(self, link, method, uri, data, params, headers):
         return {'t1': 15, 't2': 'foo'}
 
+    def y_links_action(self, link, method, uri, data, params, headers):
+        self._x = data
+        return self._x
+
     def button_links_press(self, link, method, uri, data, params, headers):
         return None
 
@@ -69,13 +73,17 @@ class BasicServer(SimServer):
         return self._collections['items'].values()
 
     def items_links_get(self, link, method, uri, data, params, headers):
+        logger.debug("items_links_get ---------------------:\n%s" %
+                     str(self._collections['items']))
         if params:
             result = []
             for (key, value) in self._collections['items'].iteritems():
                 for p, pv in params.iteritems():
-                    if p == 'category' and value['category'] != pv:
+                    if p == 'category' and value['category'] != int(pv):
                         continue
                     if p == 'label' and value['label'] != pv:
+                        continue
+                    if p == 'min_price' and value['price'] < float(pv):
                         continue
                     result.append(key)
 
@@ -131,6 +139,13 @@ class BasicTest(unittest.TestCase):
 
         resp = x.execute('action2')
         self.assertEqual(resp.data, {'t1': 15, 't2': 'foo'})
+
+    def test_y(self):
+        y = self.service.bind('y')
+        self.assertEqual(type(y), DataRep)
+
+        resp = y.execute('action', 20)
+        self.assertEqual(resp.data, 20)
 
     def test_follow_relation(self):
         categories = self.service.bind('categories')

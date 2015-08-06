@@ -102,7 +102,7 @@ services:
 
    # Ask the ServiceManager for the bookstore Service object
    >>> bookstore = svc_mgr.find_by_name(host='http://bookstore-server.com:8080',
-                                      name='bookstore', version'1.0')
+                                      name='bookstore', version='1.0')
 
    # Bind a DataRep to a 'book' instance and retrieve data for this
    # book from the server

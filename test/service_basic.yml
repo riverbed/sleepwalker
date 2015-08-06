@@ -39,6 +39,19 @@ resources:
             response: { $ref: '#/types/t' }
             path: '$/x/action2'
 
+   y:
+      type: number
+      links:
+         self: { path: '$/y' }
+         action:
+            method: POST
+            request:
+               type: number
+            response:
+               $ref: '#/resources/x'
+            path: '$/y/action'
+
+
    button:
       type: 'null'
       relations:

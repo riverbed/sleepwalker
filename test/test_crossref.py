@@ -37,6 +37,11 @@ class CrossRefFooServer(SimServer):
         SimServer.__init__(self, *args, **kwargs)
         self.add_collection('foos', 'foo')
 
+    def embed_bar_links_get(self, link, method, uri, data, params, headers):
+        return {'name': 'embed_bar',
+                'bar': {'id': 4,
+                        'name': 'bar'}}
+
 
 class CrossRefBarServer(SimServer):
 
@@ -119,6 +124,14 @@ class FooBarTest(unittest.TestCase):
         self.assertTrue(('http://crossref-bar-server-1', None) in conns)
         self.assertTrue(('http://crossref-bar-server-2', None) in conns)
         self.assertFalse(('http://crossref-bar-server-3', None) in conns)
+
+    def test_embed_bar(self):
+        id = 'http://support.riverbed.com/apis/crossref.foo/1.0'
+        self.foo_service = SERVICE_MANAGER.find_by_id(
+            'http://crossref-foo-server', id)
+
+        embed_bar = self.foo_service.bind('embed_bar')
+        print embed_bar
 
 
 class FooBarAuthSameTest(unittest.TestCase):

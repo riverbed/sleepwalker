@@ -238,8 +238,8 @@ on the JSON pointer following the hash mark '#'.
 """
 
 import logging
+import urlparse
 import uritemplate
-
 from jsonpointer import resolve_pointer, set_pointer
 import reschema.jsonschema
 
@@ -316,29 +316,16 @@ class Schema(object):
             raise LinkError("Cannot bind a schema that has no 'self' link")
 
         selflink = self.jsonschema.links['self']
-        variables = {}
-        for var in uritemplate.variables(selflink.path.template):
-            if var not in kwargs:
-                raise MissingVariable(
-                    'No value provided for variable "%s" '
-                    'in self template: %s' %
-                    (var, selflink.path.template))
-
-            variables[var] = kwargs[var]
-
-        params = {}
-        for var in kwargs:
-            if var in selflink._params:
-                params[var] = kwargs[var]
-            elif var not in variables:
+        valid_vars = uritemplate.variables(selflink.path.template)
+        for k in kwargs.keys():
+            if k not in valid_vars:
                 raise InvalidParameter(
-                    'Invalid parameter "%s" for self template: %s' %
-                    (var, selflink.path.template))
-
-        (uri_path, values) = selflink.path.resolve(kvs=variables)
+                    'Invalid parameters "%s" for target link: %s' %
+                    (k, str(selflink)))
+        (uri_path, values) = selflink.path.resolve(kvs=kwargs)
         uri = self.service.servicepath + uri_path[1:]
         return DataRep.from_schema(self.service, uri,
-                                   jsonschema=self.jsonschema, params=params)
+                                   jsonschema=self.jsonschema)
 
 
 class _DataRepValue(object):
@@ -406,7 +393,7 @@ class DataRep(object):
 
     def __init__(self, service=None, uri=None, jsonschema=None,
                  fragment='', root=None,
-                 data=UNSET, params=None):
+                 data=UNSET):
         """ Creata a new DataRep object associated with the resource at `uri`.
 
         :param service: the service of which this resource is a part.
@@ -435,16 +422,11 @@ class DataRep(object):
             for this representation.  May not be used with `fragment`.
         :type data: Whatever Python data type matches the schema.
 
-        :param params: is optional and defines additional parameters to use
-            when retrieving the data represetnation from the server.  If
-            specified, this instance shall be read-only.
         """
 
         self.uri = uri
         self.service = service
         self.jsonschema = jsonschema
-        self.params = None if params == {} else params
-
         self.fragment = fragment
         self.root = root
 
@@ -456,7 +438,7 @@ class DataRep(object):
             elif not fragment:
                 raise FragmentError("Must supply fragment with root")
 
-            if (service or uri or jsonschema or params or
+            if (service or uri or jsonschema or
                     data is not DataRep.UNSET):
                 raise FragmentError(
                     "'fragment' and 'root' are the only valid arguments "
@@ -465,7 +447,7 @@ class DataRep(object):
             self.jsonschema = root.jsonschema.by_pointer(fragment)
             self.service = root.service
             self.uri = root.uri
-            self.params = root.params
+            self.has_query_vars = root.has_query_vars
 
         elif not (service and uri and jsonschema):
             raise TypeError(
@@ -473,6 +455,7 @@ class DataRep(object):
         else:
             # This is a root resource, and therefore owns the data directly.
             self._data = data
+            self.has_query_vars = bool(urlparse.urlsplit(uri).query)
 
         self.relations = self.jsonschema.relations
         self.links = self.jsonschema.links
@@ -538,10 +521,6 @@ class DataRep(object):
         if self.fragment:
             s += '#' + self.fragment
         s += "'"
-        if self.params is not None:
-            s += (" params:" +
-                  ','.join(["%s=%s" % (key, value)
-                            for (key, value) in self.params.iteritems()]))
         if self.jsonschema:
             s = s + ' type:' + self.jsonschema.fullname()
         return '<' + s + '>'
@@ -591,6 +570,10 @@ class DataRep(object):
         """
         if self.fragment:
             raise NotImplementedError
+
+        # XXXCJ -- need to do something here.  Is this ever even used?
+        # If so, need to parse URI, extract params, then rebuild the URI
+        # with new params.  Can this just be a call to bind()?
 
         # Use everything except the params from self.
         return DataRep.from_schema(service=self.service, uri=self.uri,
@@ -673,7 +656,7 @@ class DataRep(object):
         if self._getlink is not True:
             raise LinkError(self._getlink)
 
-        response = self._request('GET', self.uri, params=self.params)
+        response = self._request('GET', self.uri)
 
         if VALIDATE_RESPONSE:
             response_schema = self.links['get'].response
@@ -718,9 +701,9 @@ class DataRep(object):
         if self._setlink is not True:
             raise LinkError(self._setlink)
 
-        if self.params is not None:
+        if self.has_query_vars:
             raise LinkError(
-                "push not allowed, DataRep with parameters is readonly")
+                "push not allowed, DataRep with query variables is readonly")
 
         if obj is not DataRep.UNSET:
             self._data = obj
@@ -877,9 +860,12 @@ class DataRep(object):
             fulldata = None
 
         # Resolve the relative path component based on fulldata
-        (uri_path, params, values) = relation.resolve(
+        (uri_path, values) = relation.resolve(
             fulldata, self.fragment, kvs=kwargs)
         values = values or {}
+
+        logger.debug('follow: uri=%s, values=%s' %
+                     (uri_path, values))
 
         # See if the target link is on the same service
         target_host = values.get('$host') or self.service.host
@@ -898,8 +884,7 @@ class DataRep(object):
         uri = target_service.servicepath + uri_path[1:]
 
         return DataRep.from_schema(target_service, uri,
-                                   jsonschema=relation.resource,
-                                   params=params)
+                                   jsonschema=relation.resource)
 
     def execute(self, _name, _data=None, **kwargs):
         """ Execute a link by name.
@@ -946,9 +931,14 @@ class DataRep(object):
         if VALIDATE_RESPONSE and response_sch is not None:
             response_sch.validate(response)
 
-        # Create a DataRep for the response
-        return DataRep.from_schema(self.service, uri, jsonschema=response_sch,
-                                   data=response)
+        if 'self' in response_sch.links:
+            # This is a resource, make it as such
+            return DataRep.from_schema(self.service, uri,
+                                       jsonschema=response_sch, data=response)
+        else:
+            # Create a DataRep for the response
+            return DataRep.from_schema(self.service, uri,
+                                       jsonschema=response_sch, data=response)
 
     def _request(self, method, uri, body=None, params=None, headers=None):
         try:

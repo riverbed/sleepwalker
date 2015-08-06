@@ -154,7 +154,7 @@ ANY_CONTAINER_PARAMS_SCHEMA = {'filter': {'type': 'string'},
                                'other': {'type': 'number'}}
 ANY_CONTAINER_PARAMS = {'filter': 'bar'}
 
-ANY_ITEM_PATH_TEMPLATE = '$/foos/items/{id}'
+ANY_ITEM_PATH_TEMPLATE = '$/foos/items/{id}{?timezone}'
 ANY_ITEM_PATH_VARS = {'id': 42}
 ANY_ITEM_PATH_RESOLVED = '$/foos/items/42'
 ANY_ITEM_PARAMS_SCHEMA = {'timezone': {'type': 'string'}}
@@ -392,29 +392,13 @@ def test_schema_bind_no_self(schema):
         schema.bind()
 
 
-def test_schema_bind_params_no_vars(schema):
-    self_link = mock.Mock(reschema.jsonschema.Link)()
-    self_link.path = mock.Mock(reschema.jsonschema.Path)()
-    self_link.path.template = ANY_CONTAINER_PATH
-    self_link.path.resolve.return_value = (ANY_CONTAINER_PATH, {})
-    self_link._params = ANY_CONTAINER_PARAMS_SCHEMA
-
-    with mock.patch('sleepwalker.datarep.DataRep.from_schema') as patched:
-        schema.jsonschema.links = {'self': self_link}
-        dr = schema.bind(**ANY_CONTAINER_PARAMS)
-        assert dr is not None
-        patched.assert_called_once_with(
-            schema.service, ANY_SERVICE_PATH + ANY_CONTAINER_PATH[1:],
-            jsonschema=schema.jsonschema, params=ANY_CONTAINER_PARAMS)
-
-
 @pytest.fixture
 def self_link():
     self_link = mock.Mock(reschema.jsonschema.Link)()
     self_link.path = mock.Mock(reschema.jsonschema.Path)()
     self_link.path.template = ANY_ITEM_PATH_TEMPLATE
     self_link.path.resolve.return_value = (ANY_ITEM_PATH_RESOLVED, {})
-    self_link._params = ANY_ITEM_PARAMS_SCHEMA
+    self_link.path.vars = ANY_ITEM_PARAMS_SCHEMA
     return self_link
 
 
@@ -427,7 +411,7 @@ def test_schema_bind_params_and_vars(schema, self_link):
         assert dr is not None
         patched.assert_called_once_with(
             schema.service, ANY_SERVICE_PATH + ANY_ITEM_PATH_RESOLVED[1:],
-            jsonschema=schema.jsonschema, params=ANY_ITEM_PARAMS)
+            jsonschema=schema.jsonschema)
 
 
 def test_schema_bind_extra_kwargs(schema, self_link):
@@ -439,18 +423,6 @@ def test_schema_bind_extra_kwargs(schema, self_link):
         with pytest.raises(InvalidParameter):
             schema.bind(**kwargs)
 
-
-def test_schema_bind_missing_var(schema, self_link):
-    with mock.patch('sleepwalker.datarep.DictDataRep'):
-        schema.jsonschema.links = {'self': self_link}
-        with pytest.raises(MissingVariable):
-            schema.bind(thisiswrong='whatever')
-
-    self_link = mock.Mock(reschema.jsonschema.Link)()
-    self_link = mock.Mock(reschema.jsonschema.Link)()
-    self_link.path = mock.Mock(reschema.jsonschema.Path)()
-    self_link.path.template = ANY_ITEM_PATH_TEMPLATE
-    self_link._params = {'thisiswrong': 'whocares'}
 
 # ============ _DataRepValue tests ============================
 
@@ -478,7 +450,6 @@ def test_datarep_instantiation_defaults(mock_service, mock_jsonschema):
     assert dr.jsonschema is mock_jsonschema
     assert dr.fragment is ''
     assert dr._data is datarep.DataRep.UNSET
-    assert dr.params is None
 
     helper_check_links(dr, present=[], absent=['_getlink', '_setlink',
                                                '_createlink', '_deletelink'])
@@ -538,16 +509,11 @@ def test_datarep_instantiation_fragment_data(any_datarep):
         datarep.DataRep(data=42, root=any_datarep, fragment=ANY_FRAGMENT_PTR)
 
 
+@pytest.mark.xfail
 def test_datarep_instantiation_fragment_params(any_datarep):
     with pytest.raises(FragmentError):
         datarep.DataRep(params={'x': 1}, root=any_datarep,
                         fragment=ANY_FRAGMENT_PTR)
-
-
-def test_datarep_instantiation_empty_params(mock_service, mock_jsonschema):
-    dr = datarep.DataRep(mock_service, ANY_URI, jsonschema=mock_jsonschema,
-                         params={})
-    assert dr.params is None
 
 
 def test_datarep_with_get(mock_service, mock_jsonschema):
@@ -756,6 +722,7 @@ def test_fragment_deleted_data_false(deleted_fragment):
 
 # ================= URL parameters ==========================================
 
+@pytest.mark.xfail
 def test_apply_params(data_datarep):
     # Pull to ensure that we have data that is not propagated.
     data_datarep.pull()
@@ -987,15 +954,6 @@ def test_datarep_data_setter(any_datarep):
     any_datarep.data = ANY_DATA
     assert not any_datarep.pull.called
     assert any_datarep._data == ANY_DATA
-
-
-def test_datarep_with_params_data_setter(mock_service, mock_jsonschema):
-    dr = datarep.DataRep.from_schema(mock_service, ANY_URI, mock_jsonschema,
-                                     params={'foo': 'bar'})
-    dr.pull = mock.Mock()
-    dr.data = ANY_DATA
-    assert not dr.pull.called
-    assert dr._data == ANY_DATA
 
 
 def test_datarep_data_setter_fragment(mock_service):
