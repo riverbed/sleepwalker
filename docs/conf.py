@@ -4,8 +4,6 @@
 # accompanying the software ("License").  This software is distributed "AS IS"
 # as set forth in the License.
 
-# -*- coding: utf-8 -*-
-#
 # Sleepwalker documentation build configuration file, created by
 # sphinx-quickstart on Wed Sep 25 08:44:41 2013.
 #
