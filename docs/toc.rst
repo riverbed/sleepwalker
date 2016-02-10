@@ -1,5 +1,5 @@
-SteelScript Sleepwalker
-=======================
+Sleepwalker
+===========
 
 .. toctree::
 
