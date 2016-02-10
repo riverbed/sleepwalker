@@ -3,7 +3,7 @@ SteelScript Sleepwalker
 
 .. toctree::
 
-   SteelScript Sleepwalker Overview <index>
+   Sleepwalker Overview <index>
    service
    datarep
    connection
