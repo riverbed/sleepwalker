@@ -28,6 +28,7 @@ from requests.adapters import HTTPAdapter
 from requests.structures import CaseInsensitiveDict
 from requests.packages.urllib3.util import parse_url
 from requests.packages.urllib3.poolmanager import PoolManager
+from collections import Iterable
 
 from sleepwalker.exceptions import URLError, HTTPError, ConnectionError
 
@@ -184,7 +185,7 @@ class Connection(object):
         # it in half so the connection timeout is what the caller expects
         if timeout is None:
             self.timeout = None
-        elif type(timeout) in (tuple, list):
+        elif isinstance(timeout, Iterable):
             if len(timeout) != 2:
                 raise ValueError('timeout tuple must be 2 float entries')
             self.timeout = tuple([float(timeout[0]) / 2.0,
