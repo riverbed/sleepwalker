@@ -28,6 +28,7 @@ from requests.adapters import HTTPAdapter
 from requests.structures import CaseInsensitiveDict
 from requests.packages.urllib3.util import parse_url
 from requests.packages.urllib3.poolmanager import PoolManager
+from collections import Iterable
 
 from sleepwalker.exceptions import URLError, HTTPError, ConnectionError
 
@@ -146,13 +147,16 @@ class ConnectionManager(object):
 class Connection(object):
 
     """ Handle authentication and communication to remote machines. """
-    def __init__(self, hostname, auth=None, port=None, verify=True):
+    def __init__(self, hostname, auth=None, port=None, verify=True,
+                 timeout=None):
         """ Initialize new connection and setup authentication
 
             `hostname` - include protocol, e.g. 'https://host.com'
             `auth` - authentication object, see below
             `port` - optional port to use for connection
             `verify` - require SSL certificate validation.
+            `timeout` - float connection timeout in seconds, or tuple
+                        (connect timeout, read timeout)
 
             Authentication:
             For simple basic auth, passing a tuple of (user, pass) is
@@ -175,6 +179,19 @@ class Connection(object):
                 raise URLError('Mismatched ports provided.')
             elif not p.port and port:
                 hostname = hostname + ':' + str(port)
+
+        # since the system re-tries, the effective timeout
+        # will be 2 times the connection timeout specified, so divide
+        # it in half so the connection timeout is what the caller expects
+        if timeout is None:
+            self.timeout = None
+        elif isinstance(timeout, Iterable):
+            if len(timeout) != 2:
+                raise ValueError('timeout tuple must be 2 float entries')
+            self.timeout = tuple([float(timeout[0]) / 2.0,
+                                  float(timeout[1])])
+        else:
+            self.timeout = float(timeout) / 2.0
 
         self.hostname = hostname
         self._ssladapter = False
@@ -199,7 +216,7 @@ class Connection(object):
 
         try:
             r = self.conn.request(method, uri, data=body, params=params,
-                                  headers=extra_headers)
+                                  headers=extra_headers, timeout=self.timeout)
         except (requests.exceptions.SSLError,
                 requests.exceptions.ConnectionError) as e:
             if self._ssladapter:
@@ -212,7 +229,7 @@ class Connection(object):
             self.conn.mount('https://', SSLAdapter(ssl.PROTOCOL_TLSv1))
             self._ssladapter = True
             r = self.conn.request(method, uri, data=body, params=params,
-                                  headers=extra_headers)
+                                  headers=extra_headers, timeout=self.timeout)
 
         self.response = r
 
