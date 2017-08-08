@@ -320,7 +320,6 @@ class BasicTest(unittest.TestCase):
         cat = self.service.bind('category', id=1)
         cat._data = DataRep.FAIL
         self.assertRaises(DataPullError, cat.follow, 'items')
-        self.assertRaises(DataPullError, cat.execute, 'purchase')
 
 
 class BasicAuthTest(unittest.TestCase):

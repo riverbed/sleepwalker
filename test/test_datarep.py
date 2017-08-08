@@ -411,7 +411,7 @@ def test_schema_bind_params_and_vars(schema, self_link):
         assert dr is not None
         patched.assert_called_once_with(
             schema.service, ANY_SERVICE_PATH + ANY_ITEM_PATH_RESOLVED[1:],
-            jsonschema=schema.jsonschema)
+            jsonschema=schema.jsonschema, path_vars=kwargs)
 
 
 def test_schema_bind_extra_kwargs(schema, self_link):

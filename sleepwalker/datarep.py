@@ -325,7 +325,8 @@ class Schema(object):
         (uri_path, values) = selflink.path.resolve(kvs=kwargs)
         uri = self.service.servicepath + uri_path[1:]
         return DataRep.from_schema(self.service, uri,
-                                   jsonschema=self.jsonschema)
+                                   jsonschema=self.jsonschema,
+                                   path_vars=kwargs)
 
 
 class _DataRepValue(object):
@@ -393,7 +394,7 @@ class DataRep(object):
 
     def __init__(self, service=None, uri=None, jsonschema=None,
                  fragment='', root=None,
-                 data=UNSET):
+                 data=UNSET, path_vars=None):
         """ Creata a new DataRep object associated with the resource at `uri`.
 
         :param service: the service of which this resource is a part.
@@ -422,13 +423,15 @@ class DataRep(object):
             for this representation.  May not be used with `fragment`.
         :type data: Whatever Python data type matches the schema.
 
+        Param path_vars: optional, variables to resolve paths of links
+        :type path_vars: dict
         """
-
         self.uri = uri
         self.service = service
         self.jsonschema = jsonschema
         self.fragment = fragment
         self.root = root
+        self.path_vars = path_vars
 
         # Evaluating a DataRep in boolean context can cause a pull()
         # in order to see if data is empty or not, so compare to None.
@@ -739,7 +742,8 @@ class DataRep(object):
             (uri_path, values) = selflink.path.resolve(self.data)
             uri = self.service.servicepath + uri_path[1:]
             return DataRep.from_schema(self.service, uri,
-                                       jsonschema=self.jsonschema)
+                                       jsonschema=self.jsonschema,
+                                       path_vars=self.data)
 
     def create(self, obj):
         """ Create a new instance of a resource in a collection.
@@ -807,9 +811,6 @@ class DataRep(object):
         # get-able if the resource obtained data otherwise (as the result of a
         # set for example), or if all variables are supplied in kwargs.
         # If we have data, use it, otherwise assume everything is in kwargs.
-        #
-        # TODO: Even if we have a get link, we may not need to pull the data
-        #       in order to resolve the path, in which case we should not.
 
         # Note that fragments need to pass the full data (from the root) with
         # the fragment as the base pointer, so that upwards relative pointers
@@ -819,11 +820,13 @@ class DataRep(object):
         else:
             root = self
 
-        # Likewise, pulling is based on the root's _getlink.
-        if root.data_valid() or (root._getlink is True):
-            data = root.data
+        # If data is available, use data to resolve path.
+        # Otherwise, use path_vars to resolve path
+        if root._data not in [DataRep.UNSET, DataRep.FAIL,
+                              DataRep.FRAGMENT, DataRep.DELETED]:
+            data = root._data
         else:
-            data = None
+            data = root.path_vars
 
         if path is None:
             # If we use a different path, use the corresponding fragment
@@ -884,7 +887,8 @@ class DataRep(object):
         uri = target_service.servicepath + uri_path[1:]
 
         return DataRep.from_schema(target_service, uri,
-                                   jsonschema=relation.resource)
+                                   jsonschema=relation.resource,
+                                   path_vars=values)
 
     def execute(self, _name, _data=None, **kwargs):
         """ Execute a link by name.
