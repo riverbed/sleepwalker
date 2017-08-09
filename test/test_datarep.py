@@ -1292,9 +1292,8 @@ def test_datarep_execute_post(datarep_with_two_links):
     rep = datarep_with_two_links
     with mock.patch.object(rep, "_request") as mock_request:
         rep.execute("post")
-        assert len(mock_request.call_args_list) == 1
-        mock_request.assert_called_once_with('POST', '/apis/foo/1.0/foo', None,
-                                             None)
+        assert (mock_request.call_args_list ==
+                [mock.call('POST', '/apis/foo/1.0/foo', None, None)])
 
 
 @pytest.fixture
@@ -1311,6 +1310,5 @@ def test_datarep_with_data_execute_post(data_datarep_with_two_links):
     rep = data_datarep_with_two_links
     with mock.patch.object(rep, "_request") as mock_request:
         rep.execute("post")
-        assert len(mock_request.call_args_list) == 1
-        mock_request.assert_called_once_with('POST', '/apis/foo/1.0/foo1',
-                                             None, None)
+        assert (mock_request.call_args_list ==
+                [mock.call('POST', '/apis/foo/1.0/foo1', None, None)])
