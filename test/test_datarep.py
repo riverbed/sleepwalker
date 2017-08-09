@@ -1254,3 +1254,77 @@ def test_datarep_execute_raises(datarep_with_link):
     rep = datarep_with_link
     with pytest.raises(reschema.exceptions.MissingParameter):
         rep.execute("toplink")
+
+
+@pytest.fixture
+def datarep_with_two_links(mock_service):
+    # datarep is initialized with path_vars
+    # which will be used to resolve path for links
+    schema = reschema.jsonschema.Schema.parse(
+        input={
+            'type': 'object',
+            'properties': {
+                'foo': {'type': 'string'},
+            },
+            'links': {'self': {
+                          'path': '$/{foo}'
+                      },
+                      'get': {
+                          'method': 'GET',
+                          'path': '$/{foo}',
+                      },
+                      'post': {
+                          'method': 'POST',
+                          'path': '$/{foo}'
+                      }
+                      },
+        },
+        name='any',
+        servicedef=ANY_SERVICE_DEF)
+    rep = datarep.DataRep.from_schema(mock_service, ANY_URI,
+                                      jsonschema=schema,
+                                      path_vars={'foo': 'foo'})
+    return rep
+
+
+def test_datarep_execute_post(datarep_with_two_links):
+    rep = datarep_with_two_links
+    with mock.patch.object(rep, "_request") as mock_request:
+        rep.execute("post")
+        assert len(mock_request.call_args_list) == 1
+        assert (list(mock_request.call_args_list[0])[0] ==
+                ('POST', '/apis/foo/1.0/foo', None, None))
+
+
+def test_datarep_execute_get(datarep_with_two_links):
+    rep = datarep_with_two_links
+    with mock.patch.object(rep, "_request") as mock_request:
+        rep.execute("get")
+        mock_request.assert_called_once_with('GET', '/apis/foo/1.0/foo', None,
+                                             None)
+
+
+@pytest.fixture
+def data_datarep_with_two_links(datarep_with_two_links):
+    # Update datarep's data with new parameter value
+    # Ensure the value takes precedence over path_vars
+    # links paths are updated accordingly
+    datarep_with_two_links.data = {"foo": "foo1"}
+    return datarep_with_two_links
+
+
+def test_datarep_with_data_execute_post(data_datarep_with_two_links):
+    rep = data_datarep_with_two_links
+    with mock.patch.object(rep, "_request") as mock_request:
+        rep.execute("post")
+        assert len(mock_request.call_args_list) == 1
+        assert (list(mock_request.call_args_list[0])[0] ==
+                ('POST', '/apis/foo/1.0/foo1', None, None))
+
+
+def test_datarep_with_data_execute_get(data_datarep_with_two_links):
+    rep = data_datarep_with_two_links
+    with mock.patch.object(rep, "_request") as mock_request:
+        rep.execute("get")
+        mock_request.assert_called_once_with('GET', '/apis/foo/1.0/foo1', None,
+                                             None)
