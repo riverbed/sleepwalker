@@ -34,7 +34,9 @@ class BookstoreServer(SimServer):
             add = True
             if params:
                 for p, pv in params.iteritems():
-                    if p == 'author' and pv not in v['author_ids']:
+                    # pv is the id of author
+                    # which is a integer in string format
+                    if p == 'author' and int(pv) not in v['author_ids']:
                         add = False
                         break
             if add:
