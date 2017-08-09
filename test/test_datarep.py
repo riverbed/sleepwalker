@@ -1288,12 +1288,13 @@ def datarep_with_two_links(mock_service):
 
 
 def test_datarep_execute_post(datarep_with_two_links):
+    # Verify only 'POST' link is executed
     rep = datarep_with_two_links
     with mock.patch.object(rep, "_request") as mock_request:
         rep.execute("post")
         assert len(mock_request.call_args_list) == 1
-        assert (list(mock_request.call_args_list[0])[0] ==
-                ('POST', '/apis/foo/1.0/foo', None, None))
+        mock_request.assert_called_once_with('POST', '/apis/foo/1.0/foo', None,
+                                             None)
 
 
 @pytest.fixture
@@ -1306,9 +1307,10 @@ def data_datarep_with_two_links(datarep_with_two_links):
 
 
 def test_datarep_with_data_execute_post(data_datarep_with_two_links):
+    # Verify only 'POST' link is executed
     rep = data_datarep_with_two_links
     with mock.patch.object(rep, "_request") as mock_request:
         rep.execute("post")
         assert len(mock_request.call_args_list) == 1
-        assert (list(mock_request.call_args_list[0])[0] ==
-                ('POST', '/apis/foo/1.0/foo1', None, None))
+        mock_request.assert_called_once_with('POST', '/apis/foo/1.0/foo1',
+                                             None, None)
