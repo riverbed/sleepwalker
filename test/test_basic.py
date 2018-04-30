@@ -66,19 +66,19 @@ class BasicServer(SimServer):
         return extended_item
 
     def fullitems_links_get(self, link, method, uri, data, params, headers):
-        return self._collections['items'].values()
+        return list(self._collections['items'].values())
 
     def fullitems_with_full_links_get(self, link, method, uri, data,
                                       params, headers):
-        return self._collections['items'].values()
+        return list(self._collections['items'].values())
 
     def items_links_get(self, link, method, uri, data, params, headers):
         logger.debug("items_links_get ---------------------:\n%s" %
                      str(self._collections['items']))
         if params:
             result = []
-            for (key, value) in self._collections['items'].iteritems():
-                for p, pv in params.iteritems():
+            for (key, value) in self._collections['items'].items():
+                for p, pv in params.items():
                     if p == 'category' and value['category'] != int(pv):
                         continue
                     if p == 'label' and value['label'] != pv:
@@ -89,20 +89,20 @@ class BasicServer(SimServer):
 
             return result
         else:
-            return self._collections['items'].keys()
+            return list(self._collections['items'].keys())
 
     def categories_links_get(self, link, method, uri, data, params, headers):
         if params:
             result = []
-            for (key, value) in self._collections['categories'].iteritems():
-                for p, pv in params.iteritems():
+            for (key, value) in self._collections['categories'].items():
+                for p, pv in params.items():
                     if p == 'label' and value['label'] != pv:
                         continue
                     result.append(key)
 
             return result
         else:
-            return self._collections['categories'].keys()
+            return list(self._collections['categories'].keys())
 
 
 class BasicTest(unittest.TestCase):

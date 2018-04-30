@@ -69,8 +69,8 @@ class TestConnection(object):
 
     def json_request(self, method, uri, data, params, headers):
         logger.info("%s %s params=%s, data=%s" % (method, uri, params, data))
-        for path, server in (self.server_manager
-                             .server_map[self.host].iteritems()):
+        for path, server in (iter(self.server_manager
+                             .server_map[self.host].items())):
             logger.debug('Comparing path %s to uri %s' % (path, uri))
 
             if re.match("^%s(.*)$" % path, uri):

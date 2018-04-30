@@ -7,7 +7,7 @@
 import os
 import logging
 import unittest
-import urlparse
+import urllib.parse
 
 import mock
 import requests.exceptions
@@ -26,7 +26,7 @@ HTTPSBIN = (os.environ.get('HTTPSBIN_URL', 'https://httpbin.org/')
 
 def httpbin(*suffix):
     """Returns url for HTTPBIN resource."""
-    return urlparse.urljoin(HTTPBIN, '/'.join(suffix))
+    return urllib.parse.urljoin(HTTPBIN, '/'.join(suffix))
 
 
 class ConnectionTest(unittest.TestCase):

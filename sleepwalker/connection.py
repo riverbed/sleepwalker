@@ -20,7 +20,7 @@ in a form understood by the underlying connection class.
 
 import ssl
 import json
-import urlparse
+import urllib.parse
 import logging
 import requests
 import requests.exceptions
@@ -110,7 +110,7 @@ class ConnectionManager(object):
 
     def reset(self):
         """ Close and forget all connections. """
-        for conn in self.conns.values():
+        for conn in list(self.conns.values()):
             conn.close()
         self.conns = {}
 
@@ -206,7 +206,7 @@ class Connection(object):
     def get_url(self, uri):
         """ Returns a fully qualified URL given a URI. """
         # TODO make this a prepend_if_needed type method
-        return urlparse.urljoin(self.hostname, uri)
+        return urllib.parse.urljoin(self.hostname, uri)
 
     def _request(self, method, uri, body=None, params=None,
                  extra_headers=None):

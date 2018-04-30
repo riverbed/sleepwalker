@@ -8,7 +8,7 @@ import os
 import logging
 import unittest
 import re
-import urlparse
+import urllib.parse
 
 from sleepwalker.datarep import ListDataRep
 
@@ -131,7 +131,7 @@ class FooBarTest(unittest.TestCase):
             'http://crossref-foo-server', id)
 
         embed_bar = self.foo_service.bind('embed_bar')
-        print embed_bar
+        print(embed_bar)
 
 
 class FooBarAuthSameTest(unittest.TestCase):
@@ -235,7 +235,7 @@ class FooBarAuthDiffTest(unittest.TestCase):
             self.auth[host] = (username, password)
 
         def __call__(self, req):
-            parsed = urlparse.urlparse(req.conn.host)
+            parsed = urllib.parse.urlparse(req.conn.host)
             if parsed.netloc in self.auth:
                 req.headers['auth_header'] = self.auth[parsed.netloc]
 

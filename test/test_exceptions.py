@@ -55,6 +55,6 @@ def test_crippled_response():
 # use a class twice or use a base class.
 def test_http_error_code_map():
     bases = set((HTTPError, ClientHTTPError, ServerHTTPError))
-    assert not bases.intersection(HTTPError.code_map.itervalues())
+    assert not bases.intersection(iter(HTTPError.code_map.values()))
 
-    assert len(HTTPError.code_map) == len(HTTPError.code_map.values())
+    assert len(HTTPError.code_map) == len(list(HTTPError.code_map.values()))

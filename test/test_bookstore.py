@@ -30,10 +30,10 @@ class BookstoreServer(SimServer):
 
     def books_links_get(self, link, method, uri, data, params, headers):
         result = []
-        for v in self._collections['books'].values():
+        for v in list(self._collections['books'].values()):
             add = True
             if params:
-                for p, pv in params.iteritems():
+                for p, pv in params.items():
                     # pv is the id of author
                     # which is a integer in string format
                     if p == 'author' and int(pv) not in v['author_ids']:

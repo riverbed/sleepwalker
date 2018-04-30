@@ -7,7 +7,7 @@
 import re
 import logging
 import uritemplate
-import urlparse
+import urllib.parse
 import string
 import copy
 
@@ -68,20 +68,20 @@ class SimServer(object):
 
         service = self.service
 
-        r = urlparse.urlparse(uri)
+        r = urllib.parse.urlparse(uri)
         if r.query:
             params = params or {}
-            for k, v in dict(urlparse.parse_qsl(r.query)).iteritems():
+            for k, v in dict(urllib.parse.parse_qsl(r.query)).items():
                 params[k] = v
             parts = list(r)
             parts[4] = ''
             parts[5] = ''
-            uri = urlparse.urlunparse(parts)
+            uri = urllib.parse.urlunparse(parts)
 
         logger.info("%s %s params=%s, data=%s" % (method, uri, params, data))
 
-        for r in service.servicedef.resources.values():
-            for link in r.links.values():
+        for r in list(service.servicedef.resources.values()):
+            for link in list(r.links.values()):
                 if ((link.method is None) or (method != link.method) or
                         (link.path is None)):
                     continue
@@ -117,7 +117,7 @@ class SimServer(object):
                     func = self.__getattribute__(n)
                     logger.debug("calling func %s" % n)
                     return func(link, method, uri, data, params, headers)
-                elif (link.schema.name in self._collections.keys() and
+                elif (link.schema.name in list(self._collections.keys()) and
                       hasattr(self, 'collection_' + link.name)):
                     n = 'collection_' + link.name
                     func = self.__getattribute__(n)
@@ -168,7 +168,7 @@ class SimServer(object):
         m = re.match('.*/([a-z]*)', uri)
         collection_name = m.group(1)
         collection = self._collections[collection_name]
-        keys = collection.keys()
+        keys = list(collection.keys())
         keys.sort()
         return [collection[k] for k in keys]
 
