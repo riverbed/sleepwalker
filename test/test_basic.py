@@ -77,8 +77,8 @@ class BasicServer(SimServer):
                      str(self._collections['items']))
         if params:
             result = []
-            for (key, value) in self._collections['items'].items():
-                for p, pv in params.items():
+            for (key, value) in list(self._collections['items'].items()):
+                for p, pv in list(params.items()):
                     if p == 'category' and value['category'] != int(pv):
                         continue
                     if p == 'label' and value['label'] != pv:
@@ -94,8 +94,8 @@ class BasicServer(SimServer):
     def categories_links_get(self, link, method, uri, data, params, headers):
         if params:
             result = []
-            for (key, value) in self._collections['categories'].items():
-                for p, pv in params.items():
+            for (key, value) in list(self._collections['categories'].items()):
+                for p, pv in list(params.items()):
                     if p == 'label' and value['label'] != pv:
                         continue
                     result.append(key)

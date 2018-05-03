@@ -1050,23 +1050,14 @@ class DictDataRep(ContainerDataRep):
         # A fragment's keys should be identical to the keys of its data.
         return iter(self.data)
 
-    def iterkeys(self):
+    def keys(self):
         return iter(self)
 
-    def keys(self):
-        return [k for k in self.keys()]
-
-    def itervalues(self):
+    def values(self):
         return DictDataRep.ValuesIterator(self)
 
-    def values(self):
-        return [v for v in self.values()]
-
-    def iteritems(self):
-        return DictDataRep.ItemsIterator(self)
-
     def items(self):
-        return [kv for kv in self.items()]
+        return DictDataRep.ItemsIterator(self)
 
     def get(self, key, default):
         # TODO: Coming back to this in a separate commit.

@@ -33,7 +33,7 @@ class BookstoreServer(SimServer):
         for v in list(self._collections['books'].values()):
             add = True
             if params:
-                for p, pv in params.items():
+                for p, pv in list(params.items()):
                     # pv is the id of author
                     # which is a integer in string format
                     if p == 'author' and int(pv) not in v['author_ids']:

@@ -1097,8 +1097,8 @@ def test_datarep_object___iter__(any_datarep_with_object_data):
 def test_datarep_object_iterkeys(any_datarep_with_object_data):
     drod = any_datarep_with_object_data
     # iterkeys() should just call plain __iter__() via the builtin.
-    with mock.patch('__builtin__.iter', mock.MagicMock()) as patched:
-        iter(drod.keys())
+    with mock.patch('builtins.iter', mock.MagicMock()) as patched:
+        drod.keys()
         patched.assert_called_once_with(drod)
 
 

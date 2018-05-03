@@ -84,13 +84,14 @@ class FooBarTest(unittest.TestCase):
         for i in range(2):
             foos.create(
                 {'bar_id': i + 1,
-                 'bar_server': 'http://crossref-bar-server-%d' % (i + 1),
+                 'bar_server': 'http://crossref-bar-server-{0}'.format(i + 1),
                  'bar_instance': ''})
             for j in range(2):
                 foos.create(
                     {'bar_id': i + 1,
-                     'bar_server': 'http://crossref-bar-server-%d' % (i + 1),
-                     'bar_instance': 'instance-%d' % (j + 1)})
+                     'bar_server': 'http://crossref-bar-server-{0}'.format(
+                         i + 1),
+                     'bar_instance': 'instance-{0}'.format(j + 1)})
 
         foos.pull()
         self.assertEqual(type(foos), ListDataRep)

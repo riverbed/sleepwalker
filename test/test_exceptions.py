@@ -26,7 +26,7 @@ def test_gl5_error_response():
     response.json = mock.Mock(return_value=r_json)
     exc = HTTPError(response)
     assert str(exc) == 'Malformed input structure'
-    assert repr(exc) == "HTTPError(u'Malformed input structure',)"
+    assert repr(exc) == "HTTPError('Malformed input structure',)"
 
 
 # If it's not a GL5 response, make sure we get the HTTP error reason
@@ -55,6 +55,6 @@ def test_crippled_response():
 # use a class twice or use a base class.
 def test_http_error_code_map():
     bases = set((HTTPError, ClientHTTPError, ServerHTTPError))
-    assert not bases.intersection(iter(HTTPError.code_map.values()))
+    assert not bases.intersection(iter(list(HTTPError.code_map.values())))
 
     assert len(HTTPError.code_map) == len(list(HTTPError.code_map.values()))
