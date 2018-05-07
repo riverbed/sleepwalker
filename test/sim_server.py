@@ -1,4 +1,4 @@
-# Copyright (c) 2015 Riverbed Technology, Inc.
+# Copyright (c) 2018 Riverbed Technology, Inc.
 #
 # This software is licensed under the terms and conditions of the MIT License
 # accompanying the software ("License").  This software is distributed "AS IS"
@@ -71,7 +71,7 @@ class SimServer(object):
         r = urllib.parse.urlparse(uri)
         if r.query:
             params = params or {}
-            for k, v in list(dict(urllib.parse.parse_qsl(r.query)).items()):
+            for k, v in dict(urllib.parse.parse_qsl(r.query)).items():
                 params[k] = v
             parts = list(r)
             parts[4] = ''
@@ -80,8 +80,8 @@ class SimServer(object):
 
         logger.info("%s %s params=%s, data=%s" % (method, uri, params, data))
 
-        for r in list(service.servicedef.resources.values()):
-            for link in list(r.links.values()):
+        for r in service.servicedef.resources.values():
+            for link in r.links.values():
                 if ((link.method is None) or (method != link.method) or
                         (link.path is None)):
                     continue
@@ -117,7 +117,7 @@ class SimServer(object):
                     func = self.__getattribute__(n)
                     logger.debug("calling func %s" % n)
                     return func(link, method, uri, data, params, headers)
-                elif (link.schema.name in list(self._collections.keys()) and
+                elif (link.schema.name in self._collections.keys() and
                       hasattr(self, 'collection_' + link.name)):
                     n = 'collection_' + link.name
                     func = self.__getattribute__(n)

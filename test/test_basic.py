@@ -1,4 +1,4 @@
-# Copyright (c) 2015 Riverbed Technology, Inc.
+# Copyright (c) 2018 Riverbed Technology, Inc.
 #
 # This software is licensed under the terms and conditions of the MIT License
 # accompanying the software ("License").  This software is distributed "AS IS"
@@ -77,8 +77,8 @@ class BasicServer(SimServer):
                      str(self._collections['items']))
         if params:
             result = []
-            for (key, value) in list(self._collections['items'].items()):
-                for p, pv in list(params.items()):
+            for (key, value) in self._collections['items'].items():
+                for p, pv in params.items():
                     if p == 'category' and value['category'] != int(pv):
                         continue
                     if p == 'label' and value['label'] != pv:

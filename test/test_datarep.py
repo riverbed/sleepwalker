@@ -1,4 +1,4 @@
-# Copyright (c) 2015 Riverbed Technology, Inc.
+# Copyright (c) 2018 Riverbed Technology, Inc.
 #
 # This software is licensed under the terms and conditions of the MIT License
 # accompanying the software ("License").  This software is distributed "AS IS"
@@ -1120,7 +1120,7 @@ def test_datarep_object_itervalues(any_datarep_with_object_data):
 
 def test_datarep_object_values(any_datarep_with_object_data):
     drod = any_datarep_with_object_data
-    assert [v.data for v in list(drod.values())] == list(drod.data.values())
+    assert [v.data for v in drod.values()] == list(drod.data.values())
 
 
 def test_datarep_object_iteritems(any_datarep_with_object_data):
@@ -1136,7 +1136,8 @@ def test_datarep_object_iteritems(any_datarep_with_object_data):
 
 def test_datarep_object_items(any_datarep_with_object_data):
     drod = any_datarep_with_object_data
-    assert [(kv[0], kv[1].data) for kv in list(drod.items())] == list(drod.data.items())
+    assert ([(kv[0], kv[1].data) for kv in drod.items()] ==
+            list(drod.data.items()))
 
 
 def test_datarep_array_index(any_datarep_fragment_with_array_data):

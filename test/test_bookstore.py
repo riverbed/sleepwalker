@@ -1,4 +1,4 @@
-# Copyright (c) 2015 Riverbed Technology, Inc.
+# Copyright (c) 2018 Riverbed Technology, Inc.
 #
 # This software is licensed under the terms and conditions of the MIT License
 # accompanying the software ("License").  This software is distributed "AS IS"
@@ -30,10 +30,10 @@ class BookstoreServer(SimServer):
 
     def books_links_get(self, link, method, uri, data, params, headers):
         result = []
-        for v in list(self._collections['books'].values()):
+        for v in self._collections['books'].values():
             add = True
             if params:
-                for p, pv in list(params.items()):
+                for p, pv in params.items():
                     # pv is the id of author
                     # which is a integer in string format
                     if p == 'author' and int(pv) not in v['author_ids']:

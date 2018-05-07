@@ -1,4 +1,4 @@
-# Copyright (c) 2015 Riverbed Technology, Inc.
+# Copyright (c) 2018 Riverbed Technology, Inc.
 #
 # This software is licensed under the terms and conditions of the MIT License
 # accompanying the software ("License").  This software is distributed "AS IS"
@@ -317,7 +317,7 @@ class Schema(object):
 
         selflink = self.jsonschema.links['self']
         valid_vars = uritemplate.variables(selflink.path.template)
-        for k in list(kwargs.keys()):
+        for k in kwargs.keys():
             if k not in valid_vars:
                 raise InvalidParameter(
                     'Invalid parameters "%s" for target link: %s' %

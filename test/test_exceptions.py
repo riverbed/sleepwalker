@@ -1,4 +1,4 @@
-# Copyright (c) 2015 Riverbed Technology, Inc.
+# Copyright (c) 2018 Riverbed Technology, Inc.
 #
 # This software is licensed under the terms and conditions of the MIT License
 # accompanying the software ("License").  This software is distributed "AS IS"
@@ -55,6 +55,6 @@ def test_crippled_response():
 # use a class twice or use a base class.
 def test_http_error_code_map():
     bases = set((HTTPError, ClientHTTPError, ServerHTTPError))
-    assert not bases.intersection(iter(list(HTTPError.code_map.values())))
+    assert not bases.intersection(HTTPError.code_map.values())
 
-    assert len(HTTPError.code_map) == len(list(HTTPError.code_map.values()))
+    assert len(HTTPError.code_map) == len(HTTPError.code_map.values())
