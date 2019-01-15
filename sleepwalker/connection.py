@@ -28,7 +28,7 @@ from requests.adapters import HTTPAdapter
 from requests.structures import CaseInsensitiveDict
 from requests.packages.urllib3.util import parse_url
 from requests.packages.urllib3.poolmanager import PoolManager
-from collections import Iterable
+from collections.abc import Iterable
 
 from sleepwalker.exceptions import URLError, HTTPError, ConnectionError
 
