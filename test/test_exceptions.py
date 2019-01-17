@@ -4,12 +4,18 @@
 # accompanying the software ("License").  This software is distributed "AS IS"
 # as set forth in the License.
 
-from sleepwalker import HTTPError, ClientHTTPError, ServerHTTPError
-import requests
-import mock
+import sys
 import json
-import pytest
 
+import mock
+import pytest
+import requests
+
+from sleepwalker import HTTPError, ClientHTTPError, ServerHTTPError
+
+# Python 3.7 changes the repr of exceptions
+# https://bugs.python.org/issue30399
+PY37 = sys.version_info.major == 3 and sys.version_info.minor >= 7
 
 # HTTPError's constructor takes a requests.Response argument,
 # which it mines for a __str__() message, assuming that the
@@ -26,7 +32,11 @@ def test_gl5_error_response():
     response.json = mock.Mock(return_value=r_json)
     exc = HTTPError(response)
     assert str(exc) == 'Malformed input structure'
-    assert repr(exc) == "HTTPError('Malformed input structure',)"
+
+    if PY37:
+        assert repr(exc) == "HTTPError('Malformed input structure')"
+    else:
+        assert repr(exc) == "HTTPError('Malformed input structure',)"
 
 
 # If it's not a GL5 response, make sure we get the HTTP error reason
@@ -38,7 +48,11 @@ def test_non_gl5_response():
     response.json = mock.Mock(return_value=None)
     exc = HTTPError(response)
     assert str(exc) == 'Bad Request'
-    assert repr(exc) == "HTTPError('Bad Request',)"
+
+    if PY37:
+        assert repr(exc) == "HTTPError('Bad Request')"
+    else:
+        assert repr(exc) == "HTTPError('Bad Request',)"
 
 
 # If some bits are missing, make sure we still get the HTTPError
