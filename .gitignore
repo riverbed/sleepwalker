@@ -5,6 +5,7 @@ dist
 version.txt
 RELEASE-VERSION
 *.egg-info
+.eggs/
 
 docs/_build
 *.html
@@ -14,3 +15,4 @@ docs/_build
 *.swp
 .DS_Store
 .idea/
+ve/

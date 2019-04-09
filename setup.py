@@ -16,12 +16,18 @@ readme = open('README.rst').read()
 doc = [
     'sphinx',
 ]
-
+install_requires = [
+        "requests",
+        "uritemplate",
+        "jsonpointer",
+        "reschema>=0.4.11",
+    ]
 test = [
     'pytest',
     'mock',
-    'requests_mock'
+    'requests_mock',
 ]
+setup_requires = ['pytest-runner'] + install_requires
 
 setup(
     name='sleepwalker',
@@ -38,12 +44,8 @@ setup(
     scripts=[
     ],
     include_package_data=True,
-    install_requires=[
-        "requests",
-        "uritemplate",
-        "jsonpointer",
-        "reschema>=0.4.11",
-    ],
+
+    install_requires=install_requires,
     extras_require={
         'test': test,
         'doc': doc,
@@ -51,6 +53,7 @@ setup(
         'all': [],
     },
     tests_require=test,
+    setup_requires=setup_requires,
     keywords='sleepwalker',
     url="http://pythonhosted.org/steelscript",
     license='MIT',

@@ -12,9 +12,9 @@ import urllib.parse
 
 from sleepwalker.datarep import ListDataRep
 
-from sim_server import \
+from test.sim_server import \
     SimServer, UnknownUsername, BadPassword, MissingAuthHeader
-from service_loader import \
+from test.service_loader import \
     ServiceDefLoader, SERVICE_MANAGER, CONNECTION_MANAGER, \
     TEST_SERVER_MANAGER
 

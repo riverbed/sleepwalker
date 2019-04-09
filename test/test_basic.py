@@ -13,8 +13,8 @@ import copy
 from sleepwalker.datarep import DataRep
 from sleepwalker.exceptions import DataPullError
 
-from sim_server import SimServer, BadPassword
-from service_loader import \
+from test.sim_server import SimServer, BadPassword
+from test.service_loader import \
     ServiceDefLoader, SERVICE_MANAGER, TEST_SERVER_MANAGER
 
 

@@ -8,8 +8,8 @@ import os
 import logging
 import unittest
 
-from sim_server import SimServer
-from service_loader import \
+from test.sim_server import SimServer
+from test.service_loader import \
     SERVICE_MANAGER, ServiceDefLoader, TEST_SERVER_MANAGER
 
 logger = logging.getLogger(__name__)
