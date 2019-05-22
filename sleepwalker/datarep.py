@@ -1,4 +1,4 @@
-# Copyright (c) 2015 Riverbed Technology, Inc.
+# Copyright (c) 2018 Riverbed Technology, Inc.
 #
 # This software is licensed under the terms and conditions of the MIT License
 # accompanying the software ("License").  This software is distributed "AS IS"
@@ -238,7 +238,7 @@ on the JSON pointer following the hash mark '#'.
 """
 
 import logging
-import urlparse
+import urllib.parse
 import uritemplate
 from jsonpointer import resolve_pointer, set_pointer
 import reschema.jsonschema
@@ -458,7 +458,7 @@ class DataRep(object):
         else:
             # This is a root resource, and therefore owns the data directly.
             self._data = data
-            self.has_query_vars = bool(urlparse.urlsplit(uri).query)
+            self.has_query_vars = bool(urllib.parse.urlsplit(uri).query)
 
         self.relations = self.jsonschema.relations
         self.links = self.jsonschema.links
@@ -528,7 +528,7 @@ class DataRep(object):
             s = s + ' type:' + self.jsonschema.fullname()
         return '<' + s + '>'
 
-    def __nonzero__(self):
+    def __bool__(self):
         """ DataReps with False values, FAIL and DELETED, are False.
 
         Note that evaluating an UNSET DataRep in boolean context causes it
@@ -986,7 +986,7 @@ class ContainerDataRep(DataRep):
 
         # Python 3 wants __next__() rather than next().
         def __next__(self):
-            return self.next()
+            return next(self)
 
     def __contains__(self, key):
         return key in self.data
@@ -1003,16 +1003,16 @@ class DictDataRep(ContainerDataRep):
     """
 
     class ValuesIterator(ContainerDataRep.Iterator):
-        def next(self):
+        def __next__(self):
             # Return a fragment using the same key that would have been
             # used to iterate over the normal data.
-            return self.datarep[self.base_iter.next()]
+            return self.datarep[next(self.base_iter)]
 
     class ItemsIterator(ContainerDataRep.Iterator):
-        def next(self):
+        def __next__(self):
             # Use the same key what would have been used to iterate
             # over the normal data.
-            key = self.base_iter.next()
+            key = next(self.base_iter)
             return key, self.datarep[key]
 
     def __getitem__(self, key):
@@ -1050,23 +1050,14 @@ class DictDataRep(ContainerDataRep):
         # A fragment's keys should be identical to the keys of its data.
         return iter(self.data)
 
-    def iterkeys(self):
+    def keys(self):
         return iter(self)
 
-    def keys(self):
-        return [k for k in self.iterkeys()]
-
-    def itervalues(self):
+    def values(self):
         return DictDataRep.ValuesIterator(self)
 
-    def values(self):
-        return [v for v in self.itervalues()]
-
-    def iteritems(self):
-        return DictDataRep.ItemsIterator(self)
-
     def items(self):
-        return [kv for kv in self.iteritems()]
+        return DictDataRep.ItemsIterator(self)
 
     def get(self, key, default):
         # TODO: Coming back to this in a separate commit.
@@ -1086,7 +1077,7 @@ class ListDataRep(ContainerDataRep):
             self.counter = -1
             self.length = len(dr)
 
-        def next(self):
+        def __next__(self):
             self.counter += 1
             if self.counter >= self.length:
                 raise StopIteration()

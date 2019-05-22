@@ -1,4 +1,4 @@
-# Copyright (c) 2015 Riverbed Technology, Inc.
+# Copyright (c) 2018 Riverbed Technology, Inc.
 #
 # This software is licensed under the terms and conditions of the MIT License
 # accompanying the software ("License").  This software is distributed "AS IS"
@@ -20,7 +20,7 @@ in a form understood by the underlying connection class.
 
 import ssl
 import json
-import urlparse
+import urllib.parse
 import logging
 import requests
 import requests.exceptions
@@ -28,7 +28,7 @@ from requests.adapters import HTTPAdapter
 from requests.structures import CaseInsensitiveDict
 from requests.packages.urllib3.util import parse_url
 from requests.packages.urllib3.poolmanager import PoolManager
-from collections import Iterable
+from collections.abc import Iterable
 
 from sleepwalker.exceptions import URLError, HTTPError, ConnectionError
 
@@ -206,7 +206,7 @@ class Connection(object):
     def get_url(self, uri):
         """ Returns a fully qualified URL given a URI. """
         # TODO make this a prepend_if_needed type method
-        return urlparse.urljoin(self.hostname, uri)
+        return urllib.parse.urljoin(self.hostname, uri)
 
     def _request(self, method, uri, body=None, params=None,
                  extra_headers=None):

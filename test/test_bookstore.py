@@ -1,4 +1,4 @@
-# Copyright (c) 2015 Riverbed Technology, Inc.
+# Copyright (c) 2018 Riverbed Technology, Inc.
 #
 # This software is licensed under the terms and conditions of the MIT License
 # accompanying the software ("License").  This software is distributed "AS IS"
@@ -8,8 +8,8 @@ import os
 import logging
 import unittest
 
-from sim_server import SimServer
-from service_loader import \
+from test.sim_server import SimServer
+from test.service_loader import \
     SERVICE_MANAGER, ServiceDefLoader, TEST_SERVER_MANAGER
 
 logger = logging.getLogger(__name__)
@@ -33,7 +33,7 @@ class BookstoreServer(SimServer):
         for v in self._collections['books'].values():
             add = True
             if params:
-                for p, pv in params.iteritems():
+                for p, pv in params.items():
                     # pv is the id of author
                     # which is a integer in string format
                     if p == 'author' and int(pv) not in v['author_ids']:

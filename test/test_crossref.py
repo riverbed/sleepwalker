@@ -1,4 +1,4 @@
-# Copyright (c) 2015 Riverbed Technology, Inc.
+# Copyright (c) 2018 Riverbed Technology, Inc.
 #
 # This software is licensed under the terms and conditions of the MIT License
 # accompanying the software ("License").  This software is distributed "AS IS"
@@ -8,13 +8,13 @@ import os
 import logging
 import unittest
 import re
-import urlparse
+import urllib.parse
 
 from sleepwalker.datarep import ListDataRep
 
-from sim_server import \
+from test.sim_server import \
     SimServer, UnknownUsername, BadPassword, MissingAuthHeader
-from service_loader import \
+from test.service_loader import \
     ServiceDefLoader, SERVICE_MANAGER, CONNECTION_MANAGER, \
     TEST_SERVER_MANAGER
 
@@ -84,13 +84,14 @@ class FooBarTest(unittest.TestCase):
         for i in range(2):
             foos.create(
                 {'bar_id': i + 1,
-                 'bar_server': 'http://crossref-bar-server-%d' % (i + 1),
+                 'bar_server': 'http://crossref-bar-server-{0}'.format(i + 1),
                  'bar_instance': ''})
             for j in range(2):
                 foos.create(
                     {'bar_id': i + 1,
-                     'bar_server': 'http://crossref-bar-server-%d' % (i + 1),
-                     'bar_instance': 'instance-%d' % (j + 1)})
+                     'bar_server': 'http://crossref-bar-server-{0}'.format(
+                         i + 1),
+                     'bar_instance': 'instance-{0}'.format(j + 1)})
 
         foos.pull()
         self.assertEqual(type(foos), ListDataRep)
@@ -131,7 +132,7 @@ class FooBarTest(unittest.TestCase):
             'http://crossref-foo-server', id)
 
         embed_bar = self.foo_service.bind('embed_bar')
-        print embed_bar
+        print(embed_bar)
 
 
 class FooBarAuthSameTest(unittest.TestCase):
@@ -235,7 +236,7 @@ class FooBarAuthDiffTest(unittest.TestCase):
             self.auth[host] = (username, password)
 
         def __call__(self, req):
-            parsed = urlparse.urlparse(req.conn.host)
+            parsed = urllib.parse.urlparse(req.conn.host)
             if parsed.netloc in self.auth:
                 req.headers['auth_header'] = self.auth[parsed.netloc]
 

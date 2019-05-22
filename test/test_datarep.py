@@ -1,4 +1,4 @@
-# Copyright (c) 2015 Riverbed Technology, Inc.
+# Copyright (c) 2018 Riverbed Technology, Inc.
 #
 # This software is licensed under the terms and conditions of the MIT License
 # accompanying the software ("License").  This software is distributed "AS IS"
@@ -1090,28 +1090,28 @@ def test_datarep_object___iter__(any_datarep_with_object_data):
     for key in drod:
         assert drod[key].data == drod.data[key]
         iterated_keys.append(key)
-    data_keys = drod.data.keys()
+    data_keys = list(drod.data.keys())
     assert iterated_keys == data_keys
 
 
 def test_datarep_object_iterkeys(any_datarep_with_object_data):
     drod = any_datarep_with_object_data
     # iterkeys() should just call plain __iter__() via the builtin.
-    with mock.patch('__builtin__.iter', mock.MagicMock()) as patched:
-        drod.iterkeys()
+    with mock.patch('builtins.iter', mock.MagicMock()) as patched:
+        drod.keys()
         patched.assert_called_once_with(drod)
 
 
 def test_datarep_object_keys(any_datarep_with_object_data):
     drod = any_datarep_with_object_data
-    assert drod.keys() == drod.data.keys()
+    assert list(drod.keys()) == list(drod.data.keys())
 
 
 def test_datarep_object_itervalues(any_datarep_with_object_data):
     drod = any_datarep_with_object_data
-    data_values = drod.data.values()
+    data_values = list(drod.data.values())
     index = 0
-    for value in drod.itervalues():
+    for value in drod.values():
         assert value.data == data_values[index]
         index += 1
 
@@ -1120,14 +1120,14 @@ def test_datarep_object_itervalues(any_datarep_with_object_data):
 
 def test_datarep_object_values(any_datarep_with_object_data):
     drod = any_datarep_with_object_data
-    assert [v.data for v in drod.values()] == drod.data.values()
+    assert [v.data for v in drod.values()] == list(drod.data.values())
 
 
 def test_datarep_object_iteritems(any_datarep_with_object_data):
     drod = any_datarep_with_object_data
-    data_items = drod.data.items()
+    data_items = list(drod.data.items())
     index = 0
-    for items in drod.iteritems():
+    for items in drod.items():
         assert (items[0], items[1].data) == data_items[index]
         index += 1
 
@@ -1136,7 +1136,8 @@ def test_datarep_object_iteritems(any_datarep_with_object_data):
 
 def test_datarep_object_items(any_datarep_with_object_data):
     drod = any_datarep_with_object_data
-    assert [(kv[0], kv[1].data) for kv in drod.items()] == drod.data.items()
+    assert ([(kv[0], kv[1].data) for kv in drod.items()] ==
+            list(drod.data.items()))
 
 
 def test_datarep_array_index(any_datarep_fragment_with_array_data):

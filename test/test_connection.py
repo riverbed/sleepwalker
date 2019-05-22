@@ -1,4 +1,4 @@
-# Copyright (c) 2015 Riverbed Technology, Inc.
+# Copyright (c) 2018 Riverbed Technology, Inc.
 #
 # This software is licensed under the terms and conditions of the MIT License
 # accompanying the software ("License").  This software is distributed "AS IS"
@@ -7,7 +7,7 @@
 import os
 import logging
 import unittest
-import urlparse
+import urllib.parse
 
 import mock
 import requests.exceptions
@@ -26,7 +26,7 @@ HTTPSBIN = (os.environ.get('HTTPSBIN_URL', 'https://httpbin.org/')
 
 def httpbin(*suffix):
     """Returns url for HTTPBIN resource."""
-    return urlparse.urljoin(HTTPBIN, '/'.join(suffix))
+    return urllib.parse.urljoin(HTTPBIN, '/'.join(suffix))
 
 
 class ConnectionTest(unittest.TestCase):

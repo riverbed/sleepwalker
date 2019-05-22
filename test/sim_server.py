@@ -1,4 +1,4 @@
-# Copyright (c) 2015 Riverbed Technology, Inc.
+# Copyright (c) 2018 Riverbed Technology, Inc.
 #
 # This software is licensed under the terms and conditions of the MIT License
 # accompanying the software ("License").  This software is distributed "AS IS"
@@ -7,7 +7,7 @@
 import re
 import logging
 import uritemplate
-import urlparse
+import urllib.parse
 import string
 import copy
 
@@ -68,15 +68,15 @@ class SimServer(object):
 
         service = self.service
 
-        r = urlparse.urlparse(uri)
+        r = urllib.parse.urlparse(uri)
         if r.query:
             params = params or {}
-            for k, v in dict(urlparse.parse_qsl(r.query)).iteritems():
+            for k, v in dict(urllib.parse.parse_qsl(r.query)).items():
                 params[k] = v
             parts = list(r)
             parts[4] = ''
             parts[5] = ''
-            uri = urlparse.urlunparse(parts)
+            uri = urllib.parse.urlunparse(parts)
 
         logger.info("%s %s params=%s, data=%s" % (method, uri, params, data))
 
@@ -94,7 +94,7 @@ class SimServer(object):
                 uri_re = uritemplate.expand(template, values)
                 if uri_re[0] == '$':
                     uri_re = "^" + service.servicepath + uri_re[1:] + "$"
-                uri_re = string.replace(uri_re, "__VAR__", "([^/]+)")
+                uri_re = str.replace(uri_re, "__VAR__", "([^/]+)")
                 logger.debug("matching %s against %s" % (uri, uri_re))
                 m = re.match(uri_re, uri)
                 if not m:
@@ -168,7 +168,7 @@ class SimServer(object):
         m = re.match('.*/([a-z]*)', uri)
         collection_name = m.group(1)
         collection = self._collections[collection_name]
-        keys = collection.keys()
+        keys = list(collection.keys())
         keys.sort()
         return [collection[k] for k in keys]
 

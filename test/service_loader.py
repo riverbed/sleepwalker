@@ -1,4 +1,4 @@
-# Copyright (c) 2015 Riverbed Technology, Inc.
+# Copyright (c) 2018 Riverbed Technology, Inc.
 #
 # This software is licensed under the terms and conditions of the MIT License
 # accompanying the software ("License").  This software is distributed "AS IS"
@@ -69,8 +69,7 @@ class TestConnection(object):
 
     def json_request(self, method, uri, data, params, headers):
         logger.info("%s %s params=%s, data=%s" % (method, uri, params, data))
-        for path, server in (self.server_manager
-                             .server_map[self.host].iteritems()):
+        for path, server in self.server_manager.server_map[self.host].items():
             logger.debug('Comparing path %s to uri %s' % (path, uri))
 
             if re.match("^%s(.*)$" % path, uri):
