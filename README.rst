@@ -8,7 +8,7 @@ using ``reschema``-based JSON schemas.
 License
 =======
 
-Copyright (c) 2015 Riverbed Technology, Inc.
+Copyright (c) 2019 Riverbed Technology, Inc.
 
 Sleepwalker is licensed under the terms and conditions of the MIT License
 accompanying the software ("License").  Sleepwalker is distributed "AS IS" as
