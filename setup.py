@@ -36,7 +36,7 @@ install_requires = [
     "requests",
     "uritemplate",
     "jsonpointer",
-    "reschema>=0.4.11",
+    "reschema>=2.0",
 ]
 test = [
     'pytest',
